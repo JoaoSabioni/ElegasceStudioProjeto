@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { getBarbers, getServices, createBooking } from '@/lib/api'
+import { useEffect, useState } from 'react'
+import { createBooking, getAvailability, getBarbers, getServices } from '@/lib/api'
 import { getUser } from '@/lib/auth'
 
 interface NewBookingModalProps {
@@ -9,162 +9,159 @@ interface NewBookingModalProps {
   onCreated: () => void
 }
 
-type Barber  = { id: string; name: string }
+type Barber = { id: string; name: string }
 type Service = { id: string; name: string; durationMinutes: number }
 
-const MESES        = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
-const DIAS_SEMANA  = ['D','S','T','Q','Q','S','S']
+const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+const WEEK_DAYS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
 
-// Todos os slots possíveis 09:00–19:00 de 30 em 30 min
-const ALL_SLOTS: string[] = []
-for (let h = 9; h <= 19; h++) {
-  ALL_SLOTS.push(`${String(h).padStart(2,'0')}:00`)
-  if (h < 19) ALL_SLOTS.push(`${String(h).padStart(2,'0')}:30`)
+function getDaysInMonth(year: number, month: number) {
+  return new Date(year, month + 1, 0).getDate()
 }
 
-function getDaysInMonth(y: number, m: number) { return new Date(y, m + 1, 0).getDate() }
-function getFirstDay(y: number, m: number)    { return new Date(y, m, 1).getDay() }
-function pad2(n: number)                       { return String(n).padStart(2, '0') }
-function toDateStr(y: number, m: number, d: number) {
-  return `${y}-${pad2(m + 1)}-${pad2(d)}`
+function getFirstDay(year: number, month: number) {
+  return new Date(year, month, 1).getDay()
+}
+
+function pad2(value: number) {
+  return String(value).padStart(2, '0')
+}
+
+function toDateStr(year: number, month: number, day: number) {
+  return `${year}-${pad2(month + 1)}-${pad2(day)}`
 }
 
 export default function NewBookingModal({ onClose, onCreated }: NewBookingModalProps) {
   const currentUser = getUser()
-  const isBarber    = currentUser?.role === 'Barber'
-
-  const [barbers,  setBarbers]  = useState<Barber[]>([])
-  const [services, setServices] = useState<Service[]>([])
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState('')
-
-  // Serviços
-  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([])
-  const [pendingServiceId,   setPendingServiceId]   = useState('')
-
-  // Barbeiro
-  const [barberId, setBarberId] = useState(
-    isBarber && currentUser?.barberId ? currentUser.barberId : ''
-  )
-
-  // Cliente
-  const [clientName, setClientName] = useState('')
-  const [phone,      setPhone]      = useState('+351 ')
-
-  // Data — mini calendário
+  const isBarber = currentUser?.role === 'Barber'
   const today = new Date()
-  const [calYear,     setCalYear]     = useState(today.getFullYear())
-  const [calMonth,    setCalMonth]    = useState(today.getMonth())
-  const [selectedDay, setSelectedDay] = useState<number | null>(null)
 
-  // Hora
+  const [barbers, setBarbers] = useState<Barber[]>([])
+  const [services, setServices] = useState<Service[]>([])
+  const [barberId, setBarberId] = useState(isBarber && currentUser?.barberId ? currentUser.barberId : '')
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([])
+  const [clientName, setClientName] = useState('')
+  const [clientEmail, setClientEmail] = useState('')
+  const [phone, setPhone] = useState('+351 ')
+  const [calYear, setCalYear] = useState(today.getFullYear())
+  const [calMonth, setCalMonth] = useState(today.getMonth())
+  const [selectedDay, setSelectedDay] = useState<number | null>(null)
   const [selectedTime, setSelectedTime] = useState('')
+  const [availableSlots, setAvailableSlots] = useState<string[]>([])
+  const [loading, setLoading] = useState(false)
+  const [slotsLoading, setSlotsLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const bookingDate = selectedDay ? toDateStr(calYear, calMonth, selectedDay) : ''
+  const autoBarberName = barbers.find(b => b.id === barberId)?.name
+  const availableServices = services.filter(service => !selectedServiceIds.includes(service.id))
+  const totalDuration = selectedServiceIds.reduce(
+    (total, id) => total + (services.find(service => service.id === id)?.durationMinutes ?? 0),
+    0
+  )
+  const hasValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail.trim())
 
   useEffect(() => {
     getBarbers().then(setBarbers).catch(() => {})
     getServices().then(setServices).catch(() => {})
   }, [])
 
-  // ── Slots disponíveis — filtra horas passadas para o dia de hoje
-  const availableSlots = useMemo(() => {
-    if (!selectedDay) return ALL_SLOTS
-
-    const chosen = toDateStr(calYear, calMonth, selectedDay)
-    const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate())
-
-    if (chosen !== todayStr) return ALL_SLOTS // dia futuro → todos os slots
-
-    // Hoje: próximo bloco de 30 min a partir de agora
-    const now = new Date()
-    const totalMins = now.getHours() * 60 + now.getMinutes()
-    const nextBlock = Math.ceil((totalMins + 1) / 30) * 30 // mínimo 1 min à frente
-
-    return ALL_SLOTS.filter(slot => {
-      const [h, m] = slot.split(':').map(Number)
-      return h * 60 + m >= nextBlock
-    })
-  }, [selectedDay, calYear, calMonth])
-
-  // Se o slot seleccionado desapareceu (mudou o dia para hoje), limpa
   useEffect(() => {
-    if (selectedTime && !availableSlots.includes(selectedTime)) {
-      setSelectedTime('')
-    }
-  }, [availableSlots, selectedTime])
+    setSelectedTime('')
+    setAvailableSlots([])
 
-  // ── Telefone
-  const handlePhone = (val: string) => {
-    if (!val.startsWith('+351')) { setPhone('+351 '); return }
-    setPhone(val)
-  }
+    if (!barberId || selectedServiceIds.length === 0 || !bookingDate) return
 
-  // ── Serviços
-  const addService    = () => {
-    if (!pendingServiceId || selectedServiceIds.includes(pendingServiceId)) return
-    setSelectedServiceIds(prev => [...prev, pendingServiceId])
-    setPendingServiceId('')
-  }
+    let cancelled = false
+    setSlotsLoading(true)
+    setError('')
+
+    getAvailability(barberId, bookingDate, selectedServiceIds)
+      .then(data => {
+        if (!cancelled) setAvailableSlots(data.availableSlots ?? [])
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAvailableSlots([])
+          setError('Erro ao carregar disponibilidade.')
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setSlotsLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [barberId, selectedServiceIds, bookingDate])
+
   const removeService = (id: string) =>
-    setSelectedServiceIds(prev => prev.filter(s => s !== id))
-
-  const availableServices = services.filter(s => !selectedServiceIds.includes(s.id))
-  const totalDuration     = selectedServiceIds.reduce(
-    (acc, id) => acc + (services.find(s => s.id === id)?.durationMinutes ?? 0), 0
-  )
-
-  // ── Calendário
-  const daysInMonth = getDaysInMonth(calYear, calMonth)
-  const firstDay    = getFirstDay(calYear, calMonth)
+    setSelectedServiceIds(prev => prev.filter(serviceId => serviceId !== id))
 
   const prevMonth = () => {
-    if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1) }
-    else setCalMonth(m => m - 1)
+    if (calMonth === 0) {
+      setCalMonth(11)
+      setCalYear(year => year - 1)
+    } else {
+      setCalMonth(month => month - 1)
+    }
     setSelectedDay(null)
   }
+
   const nextMonth = () => {
-    if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1) }
-    else setCalMonth(m => m + 1)
+    if (calMonth === 11) {
+      setCalMonth(0)
+      setCalYear(year => year + 1)
+    } else {
+      setCalMonth(month => month + 1)
+    }
     setSelectedDay(null)
   }
 
-  const calCells: (number | null)[] = [
-    ...Array(firstDay).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-  ]
-  while (calCells.length % 7 !== 0) calCells.push(null)
-
-  const bookingDate = selectedDay ? toDateStr(calYear, calMonth, selectedDay) : ''
-
-  // ── Submit — fecha o modal imediatamente, refetch em background
-  const handleSubmit = async () => {
-    if (!barberId || selectedServiceIds.length === 0 || !clientName ||
-        !phone || phone.trim() === '+351' || !bookingDate || !selectedTime) {
-      setError('Preenche todos os campos e adiciona pelo menos um serviço.')
+  const handlePhone = (value: string) => {
+    if (!value.startsWith('+351')) {
+      setPhone('+351 ')
       return
     }
+    setPhone(value)
+  }
+
+  const handleSubmit = async () => {
+    if (!barberId || selectedServiceIds.length === 0 || !clientName.trim() ||
+        !phone || phone.trim() === '+351' || !hasValidEmail || !bookingDate || !selectedTime) {
+      setError('Preenche todos os campos e adiciona pelo menos um servico.')
+      return
+    }
+
     setLoading(true)
     setError('')
+
     try {
       await createBooking({
         barberId,
         serviceIds: selectedServiceIds,
-        clientName,
+        clientName: clientName.trim(),
         clientPhone: phone.replace(/\s+/g, '').trim(),
+        clientEmail: clientEmail.trim().toLowerCase(),
         bookingDate,
-        bookingTime: selectedTime + ':00', // garantir formato HH:mm:ss
+        bookingTime: `${selectedTime}:00`,
       })
-      onClose()   // fecha o modal imediatamente — sem esperar pelo refetch
-      onCreated() // refetch em background, não bloqueia o utilizador
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : ''
-      setError(msg === 'Horário já ocupado'
-        ? 'Esse horário já está ocupado.'
-        : 'Erro ao criar marcação. Tenta novamente.')
-      setLoading(false) // só no erro — no sucesso o modal já fechou
+      onClose()
+      onCreated()
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : ''
+      setError(message === 'BOOKING_CONFLICT'
+        ? 'Esse horario ja esta ocupado.'
+        : 'Erro ao criar marcacao. Tenta novamente.')
+      setLoading(false)
     }
   }
 
-  const autoBarberName = barbers.find(b => b.id === barberId)?.name
+  const daysInMonth = getDaysInMonth(calYear, calMonth)
+  const firstDay = getFirstDay(calYear, calMonth)
+  const calendarCells: (number | null)[] = [
+    ...Array(firstDay).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
+  ]
+  while (calendarCells.length % 7 !== 0) calendarCells.push(null)
 
   return (
     <div
@@ -173,17 +170,17 @@ export default function NewBookingModal({ onClose, onCreated }: NewBookingModalP
     >
       <div
         className="bg-zinc-950 border border-white/15 w-full max-w-lg p-7 shadow-2xl max-h-[92vh] overflow-y-auto"
-        onClick={e => e.stopPropagation()}
+        onClick={event => event.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between mb-7">
-          <p className="text-[9px] tracking-[0.6em] text-zinc-500 uppercase">Nova Marcação</p>
-          <button onClick={onClose} className="text-zinc-600 hover:text-white transition-colors">✕</button>
+          <div>
+            <p className="text-[9px] tracking-[0.5em] text-zinc-500 uppercase">Agenda</p>
+            <h2 className="mt-1 text-lg font-semibold text-white">Nova marcacao</h2>
+          </div>
+          <button onClick={onClose} className="text-zinc-600 hover:text-white transition-colors">x</button>
         </div>
 
         <div className="space-y-5">
-
-          {/* Barbeiro */}
           <div>
             <label className="block text-[9px] tracking-[0.3em] text-zinc-500 uppercase mb-1.5">Barbeiro</label>
             {isBarber ? (
@@ -194,22 +191,21 @@ export default function NewBookingModal({ onClose, onCreated }: NewBookingModalP
             ) : (
               <select
                 value={barberId}
-                onChange={e => setBarberId(e.target.value)}
+                onChange={event => setBarberId(event.target.value)}
                 className="w-full bg-zinc-900 border border-white/10 text-white text-[12px] px-3 py-2.5 focus:outline-none focus:border-white/30"
               >
                 <option value="">Selecionar...</option>
-                {barbers.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                {barbers.map(barber => <option key={barber.id} value={barber.id}>{barber.name}</option>)}
               </select>
             )}
           </div>
 
-          {/* Serviços */}
           <div>
             <label className="block text-[9px] tracking-[0.3em] text-zinc-500 uppercase mb-1.5">
-              Serviços
+              Servicos
               {totalDuration > 0 && (
                 <span className="ml-2 text-zinc-600 normal-case tracking-normal text-[10px]">
-                  — {totalDuration} min total
+                  {totalDuration} min total
                 </span>
               )}
             </label>
@@ -217,15 +213,15 @@ export default function NewBookingModal({ onClose, onCreated }: NewBookingModalP
             {selectedServiceIds.length > 0 && (
               <div className="mb-2 space-y-1.5">
                 {selectedServiceIds.map(id => {
-                  const s = services.find(s => s.id === id)
-                  if (!s) return null
+                  const service = services.find(item => item.id === id)
+                  if (!service) return null
                   return (
                     <div key={id} className="flex items-center justify-between px-3 py-2 bg-zinc-900/60 border border-white/10">
                       <span className="text-[11px] text-zinc-300">
-                        {s.name}
-                        <span className="ml-2 text-zinc-600 text-[10px]">{s.durationMinutes} min</span>
+                        {service.name}
+                        <span className="ml-2 text-zinc-600 text-[10px]">{service.durationMinutes} min</span>
                       </span>
-                      <button onClick={() => removeService(id)} className="text-zinc-600 hover:text-red-400 transition-colors ml-3">✕</button>
+                      <button onClick={() => removeService(id)} className="text-zinc-600 hover:text-red-400 transition-colors ml-3">x</button>
                     </div>
                   )
                 })}
@@ -233,106 +229,99 @@ export default function NewBookingModal({ onClose, onCreated }: NewBookingModalP
             )}
 
             {availableServices.length > 0 ? (
-              <div className="flex gap-2">
-                <select
-                  value=""
-                  onChange={e => {
-                    const id = e.target.value
-                    if (id && !selectedServiceIds.includes(id))
-                      setSelectedServiceIds(prev => [...prev, id])
-                  }}
-                  className="w-full bg-zinc-900 border border-white/10 text-white text-[12px] px-3 py-2.5 focus:outline-none focus:border-white/30"
-                >
-                  <option value="">Adicionar serviço...</option>
-                  {availableServices.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
+              <select
+                value=""
+                onChange={event => {
+                  const id = event.target.value
+                  if (id && !selectedServiceIds.includes(id))
+                    setSelectedServiceIds(prev => [...prev, id])
+                }}
+                className="w-full bg-zinc-900 border border-white/10 text-white text-[12px] px-3 py-2.5 focus:outline-none focus:border-white/30"
+              >
+                <option value="">Adicionar servico...</option>
+                {availableServices.map(service => (
+                  <option key={service.id} value={service.id}>{service.name}</option>
+                ))}
+              </select>
             ) : selectedServiceIds.length > 0 && (
-              <p className="text-[10px] text-zinc-600 tracking-[0.2em] uppercase mt-1">Todos os serviços adicionados</p>
-            )}
-            {selectedServiceIds.length === 0 && (
-              <p className="text-[10px] text-zinc-700 mt-1">Seleciona e adiciona pelo menos um serviço.</p>
+              <p className="text-[10px] text-zinc-600 tracking-[0.2em] uppercase mt-1">Todos os servicos adicionados</p>
             )}
           </div>
 
-          {/* Nome */}
           <div>
-            <label className="block text-[9px] tracking-[0.3em] text-zinc-500 uppercase mb-1.5">Nome do Cliente</label>
+            <label className="block text-[9px] tracking-[0.3em] text-zinc-500 uppercase mb-1.5">Nome do cliente</label>
             <input
               type="text"
               value={clientName}
-              onChange={e => setClientName(e.target.value)}
+              onChange={event => setClientName(event.target.value)}
               placeholder="Nome completo"
               className="w-full bg-zinc-900 border border-white/10 text-white text-[12px] px-3 py-2.5 focus:outline-none focus:border-white/30 placeholder:text-zinc-700"
             />
           </div>
 
-          {/* Telefone */}
           <div>
             <label className="block text-[9px] tracking-[0.3em] text-zinc-500 uppercase mb-1.5">Telefone</label>
             <input
               type="tel"
               value={phone}
-              onChange={e => handlePhone(e.target.value)}
+              onChange={event => handlePhone(event.target.value)}
               className="w-full bg-zinc-900 border border-white/10 text-white text-[12px] px-3 py-2.5 focus:outline-none focus:border-white/30"
             />
           </div>
 
-          {/* Calendário */}
+          <div>
+            <label className="block text-[9px] tracking-[0.3em] text-zinc-500 uppercase mb-1.5">Email</label>
+            <input
+              type="email"
+              value={clientEmail}
+              onChange={event => setClientEmail(event.target.value)}
+              placeholder="email@exemplo.pt"
+              className="w-full bg-zinc-900 border border-white/10 text-white text-[12px] px-3 py-2.5 focus:outline-none focus:border-white/30 placeholder:text-zinc-700"
+            />
+          </div>
+
           <div>
             <label className="block text-[9px] tracking-[0.3em] text-zinc-500 uppercase mb-2">Data</label>
             <div className="border border-white/10 bg-zinc-900/40 p-3">
               <div className="flex items-center justify-between mb-3">
-                <button onClick={prevMonth} className="w-7 h-7 flex items-center justify-center text-zinc-500 hover:text-white transition-colors text-lg">‹</button>
+                <button onClick={prevMonth} className="w-7 h-7 flex items-center justify-center text-zinc-500 hover:text-white transition-colors text-lg">{'<'}</button>
                 <div className="text-center">
-                  <span className="text-[11px] tracking-[0.3em] text-zinc-200 uppercase">{MESES[calMonth]}</span>
+                  <span className="text-[11px] tracking-[0.3em] text-zinc-200 uppercase">{MONTHS[calMonth]}</span>
                   <span className="ml-2 text-[11px] text-zinc-600 font-mono">{calYear}</span>
                 </div>
-                <button onClick={nextMonth} className="w-7 h-7 flex items-center justify-center text-zinc-500 hover:text-white transition-colors text-lg">›</button>
+                <button onClick={nextMonth} className="w-7 h-7 flex items-center justify-center text-zinc-500 hover:text-white transition-colors text-lg">{'>'}</button>
               </div>
 
               <div className="grid grid-cols-7 mb-1">
-                {DIAS_SEMANA.map((d, i) => (
-                  <div key={i} className="text-center text-[9px] text-zinc-700 py-1">{d}</div>
+                {WEEK_DAYS.map((day, index) => (
+                  <div key={`${day}-${index}`} className="text-center text-[9px] text-zinc-700 py-1">{day}</div>
                 ))}
               </div>
 
               <div className="grid grid-cols-7 gap-0.5">
-                {calCells.map((day, i) => {
-                  if (day === null) return <div key={`e-${i}`} />
+                {calendarCells.map((day, index) => {
+                  if (day === null) return <div key={`empty-${index}`} />
+
                   const isSelected = day === selectedDay
                   const cellDate = new Date(calYear, calMonth, day)
                   const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate())
                   const isPast = cellDate < todayDate
 
-                  // Para hoje: verificar se ainda há slots disponíveis
-                  const isToday = cellDate.getTime() === todayDate.getTime()
-                  const todaySlots = isToday ? (() => {
-                    const now = new Date()
-                    const totalMins = now.getHours() * 60 + now.getMinutes()
-                    const nextBlock = Math.ceil((totalMins + 1) / 30) * 30
-                    return ALL_SLOTS.filter(slot => {
-                      const [h, m] = slot.split(':').map(Number)
-                      return h * 60 + m >= nextBlock
-                    })
-                  })() : ALL_SLOTS
-                  const noSlots = isToday && todaySlots.length === 0
-
                   return (
                     <button
                       key={day}
-                      onClick={() => !isPast && !noSlots && setSelectedDay(day)}
-                      disabled={isPast || noSlots}
+                      onClick={() => !isPast && setSelectedDay(day)}
+                      disabled={isPast}
                       className={`h-8 text-[11px] font-mono flex items-center justify-center transition-all ${
                         isSelected
                           ? 'bg-white text-black font-semibold'
-                          : isPast || noSlots
-                          ? 'text-zinc-800 cursor-not-allowed'
-                          : 'text-zinc-400 hover:bg-white/8 hover:text-white'
+                          : isPast
+                            ? 'text-zinc-800 cursor-not-allowed'
+                            : 'text-zinc-400 hover:bg-white/8 hover:text-white'
                       }`}
-                    >{day}</button>
+                    >
+                      {day}
+                    </button>
                   )
                 })}
               </div>
@@ -345,19 +334,23 @@ export default function NewBookingModal({ onClose, onCreated }: NewBookingModalP
             </div>
           </div>
 
-          {/* Slots de hora — só os disponíveis, sem blackout */}
           <div>
             <label className="block text-[9px] tracking-[0.3em] text-zinc-500 uppercase mb-2">
               Hora
+              {selectedServiceIds.length === 0 && (
+                <span className="ml-2 text-zinc-700 normal-case tracking-normal text-[10px]">seleciona servico</span>
+              )}
               {!selectedDay && (
-                <span className="ml-2 text-zinc-700 normal-case tracking-normal text-[10px]">— seleciona primeiro uma data</span>
+                <span className="ml-2 text-zinc-700 normal-case tracking-normal text-[10px]">seleciona data</span>
               )}
             </label>
             <div className="border border-white/10 bg-zinc-900/40 p-3">
-              {availableSlots.length === 0 ? (
+              {slotsLoading ? (
+                <p className="text-center text-[10px] text-zinc-700 py-4">A carregar horarios disponiveis...</p>
+              ) : availableSlots.length === 0 ? (
                 <p className="text-center text-[10px] text-zinc-700 py-4">
-                  Sem horários disponíveis para hoje.<br/>
-                  <span className="text-zinc-800">Seleciona outro dia.</span>
+                  Sem horarios disponiveis para esta selecao.<br />
+                  <span className="text-zinc-800">Seleciona outro dia ou servico.</span>
                 </p>
               ) : (
                 <div className="grid grid-cols-6 gap-1">
@@ -370,13 +363,14 @@ export default function NewBookingModal({ onClose, onCreated }: NewBookingModalP
                           ? 'bg-white text-black border-white font-semibold'
                           : 'border-white/8 text-zinc-500 hover:border-white/30 hover:text-zinc-200'
                       }`}
-                    >{slot}</button>
+                    >
+                      {slot}
+                    </button>
                   ))}
                 </div>
               )}
             </div>
           </div>
-
         </div>
 
         {error && (
@@ -387,12 +381,16 @@ export default function NewBookingModal({ onClose, onCreated }: NewBookingModalP
           <button
             onClick={onClose}
             className="flex-1 py-3.5 border border-white/10 text-zinc-500 text-[10px] tracking-[0.3em] uppercase hover:border-white/25 hover:text-white transition-all"
-          >Cancelar</button>
+          >
+            Cancelar
+          </button>
           <button
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={loading || slotsLoading}
             className="flex-1 py-3.5 bg-white text-black text-[10px] tracking-[0.3em] uppercase font-bold hover:bg-zinc-200 transition-all disabled:opacity-40"
-          >{loading ? '...' : 'Criar Marcação'}</button>
+          >
+            {loading ? '...' : 'Criar marcacao'}
+          </button>
         </div>
       </div>
     </div>

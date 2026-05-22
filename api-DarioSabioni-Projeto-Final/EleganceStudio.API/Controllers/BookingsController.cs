@@ -3,12 +3,12 @@ using EleganceStudio.API.DTOs;
 using EleganceStudio.API.Hubs;
 using EleganceStudio.API.Interfaces;
 using EleganceStudio.API.Models;
+using EleganceStudio.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using StackExchange.Redis;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -20,20 +20,32 @@ namespace EleganceStudio.API.Controllers;
 public class BookingsController : ControllerBase
 {
     private readonly AppDbContext _db;
-    private readonly IDatabase _redis;
-    private readonly ISmsService _sms;
+    private readonly ITokenStore _tokenStore;
+    private readonly IEmailService _email;
     private readonly IHubContext<BookingHub> _hub;
+    private readonly IBookingService _bookingService;
+    private readonly TimeOnly _workStart;
+    private readonly TimeOnly _workEnd;
+    private readonly int _slotInterval;
 
     public BookingsController(
         AppDbContext db,
-        IConnectionMultiplexer redis,
-        ISmsService sms,
-        IHubContext<BookingHub> hub)
+        ITokenStore tokenStore,
+        IEmailService email,
+        IHubContext<BookingHub> hub,
+        IBookingService bookingService,
+        IConfiguration config)
     {
-        _db    = db;
-        _redis = redis.GetDatabase();
-        _sms   = sms;
-        _hub   = hub;
+        _db             = db;
+        _tokenStore     = tokenStore;
+        _email          = email;
+        _hub            = hub;
+        _bookingService = bookingService;
+
+        var workingHours = config.GetSection("WorkingHours");
+        _workStart = TimeOnly.Parse(workingHours["Start"] ?? "09:00");
+        _workEnd = TimeOnly.Parse(workingHours["End"] ?? "19:00");
+        _slotInterval = int.Parse(workingHours["SlotIntervalMinutes"] ?? "30");
     }
 
     // ─── HELPERS ─────────────────────────────────────────────────────────
@@ -60,6 +72,7 @@ public class BookingsController : ControllerBase
         Status                 = b.Status,
         ClientName             = b.ClientName,
         ClientPhone            = b.ClientPhone,
+        ClientEmail            = b.ClientEmail,
         CreatedAt              = b.CreatedAt,
         UpdatedAt              = b.UpdatedAt
     };
@@ -67,22 +80,81 @@ public class BookingsController : ControllerBase
     private static readonly TimeZoneInfo LisbonTz =
         TimeZoneInfo.FindSystemTimeZoneById("Europe/Lisbon");
 
-    private static DateOnly TodayInLisbon() =>
-        DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, LisbonTz));
+    private static DateTime NowInLisbon() =>
+        TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, LisbonTz);
 
-    private static List<TimeOnly> GetOccupiedSlots(TimeOnly start, int durationMinutes, int slotInterval = 30)
+    private IActionResult ToPublicBookingsResult(
+        BookingServiceResult<IEnumerable<BookingPublicDto>> result)
     {
-        var slots = new List<TimeOnly>();
-        for (int m = 0; m < durationMinutes; m += slotInterval)
-            slots.Add(start.AddMinutes(m));
-        return slots;
+        return result.Code switch
+        {
+            BookingServiceResultCode.Created => CreatedBookings(result),
+            BookingServiceResultCode.Ok => OkBookings(result),
+            BookingServiceResultCode.BadRequest => BadRequest(ToProblemDetails(400, result)),
+            BookingServiceResultCode.NotFound => NotFound(ToProblemDetails(404, result)),
+            BookingServiceResultCode.Conflict => Conflict(ToProblemDetails(409, result)),
+            _ => StatusCode(500, ToProblemDetails(500, result))
+        };
     }
+
+    private IActionResult CreatedBookings(
+        BookingServiceResult<IEnumerable<BookingPublicDto>> result)
+    {
+        var bookings = result.Value?.ToList() ?? new List<BookingPublicDto>();
+        var firstBooking = bookings.FirstOrDefault();
+
+        return firstBooking is null
+            ? Created("/api/bookings", bookings)
+            : CreatedAtAction(nameof(GetById), new { id = firstBooking.Id }, bookings);
+    }
+
+    private static IActionResult OkBookings(
+        BookingServiceResult<IEnumerable<BookingPublicDto>> result)
+    {
+        var bookings = result.Value?.ToList() ?? new List<BookingPublicDto>();
+        return bookings.Count == 1 ? new OkObjectResult(bookings[0]) : new OkObjectResult(bookings);
+    }
+
+    private static ProblemDetails ToProblemDetails(
+        int status,
+        BookingServiceResult<IEnumerable<BookingPublicDto>> result) => new()
+    {
+        Status = status,
+        Title = result.Title,
+        Detail = result.Detail
+    };
 
     private bool IsAuthorizedForBarber(Guid barberId)
     {
         if (User.IsInRole("Admin")) return true;
         var tokenBarberId = User.FindFirstValue("barberId");
         return tokenBarberId != null && Guid.TryParse(tokenBarberId, out var tid) && tid == barberId;
+    }
+
+    private static string NormalizeEmail(string email) =>
+        email.Trim().ToLowerInvariant();
+
+    private static string ValueHash(string value)
+    {
+        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(value));
+        return Convert.ToHexString(hashBytes);
+    }
+
+    private string? ValidateSchedule(DateOnly date, TimeOnly time, int durationMinutes)
+    {
+        var now = NowInLisbon();
+        var today = DateOnly.FromDateTime(now);
+
+        if (date < today) return "Nao e possivel marcar no passado.";
+        if (date > today.AddDays(60)) return "Maximo 60 dias no futuro.";
+        if (date == today && time <= TimeOnly.FromDateTime(now))
+            return "Nao e possivel marcar num horario que ja passou.";
+        if (time.Minute % _slotInterval != 0)
+            return "Horario invalido. Use intervalos configurados.";
+        if (time < _workStart || time.AddMinutes(durationMinutes) > _workEnd)
+            return "Horario fora do expediente.";
+
+        return null;
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -96,149 +168,8 @@ public class BookingsController : ControllerBase
     [EnableRateLimiting("bookings")]
     public async Task<IActionResult> Create([FromBody] BookingRequestDto dto)
     {
-        var barber = await _db.Barbers.FindAsync(dto.BarberId);
-        if (barber == null) return NotFound(new ProblemDetails
-            { Status = 404, Title = "Barbeiro não encontrado." });
-
-        if (dto.ServiceIds == null || dto.ServiceIds.Count == 0)
-            return BadRequest(new ProblemDetails
-                { Status = 400, Title = "Indica pelo menos um serviço." });
-
-        var distinctIds = dto.ServiceIds.Distinct().ToList();
-        var services = await _db.Services
-            .Where(s => distinctIds.Contains(s.Id))
-            .ToListAsync();
-
-        if (services.Count != distinctIds.Count)
-            return NotFound(new ProblemDetails
-                { Status = 404, Title = "Um ou mais serviços não encontrados." });
-
-        var orderedServices = distinctIds
-            .Select(id => services.First(s => s.Id == id))
-            .ToList();
-
-        var today = TodayInLisbon();
-        if (dto.BookingDate < today)
-            return BadRequest(new ProblemDetails
-                { Status = 400, Title = "Não é possível marcar no passado." });
-        if (dto.BookingDate > today.AddDays(60))
-            return BadRequest(new ProblemDetails
-                { Status = 400, Title = "Máximo 60 dias no futuro." });
-
-        if (dto.BookingTime.Minute % 30 != 0)
-            return BadRequest(new ProblemDetails
-                { Status = 400, Title = "Horário inválido. Use intervalos de 30 minutos." });
-
-        var allRequestedSlots = new List<(TimeOnly start, Service service, List<TimeOnly> slots)>();
-        var cursor = dto.BookingTime;
-        foreach (var svc in orderedServices)
-        {
-            var slots = GetOccupiedSlots(cursor, svc.DurationMinutes);
-            allRequestedSlots.Add((cursor, svc, slots));
-            cursor = cursor.AddMinutes(svc.DurationMinutes);
-        }
-
-        await using var transaction = await _db.Database
-            .BeginTransactionAsync(System.Data.IsolationLevel.RepeatableRead);
-
-        try
-        {
-            // Global filter já exclui IsDeleted=true automaticamente
-            var activeBookings = await _db.Bookings
-                .FromSqlInterpolated($@"
-                    SELECT * FROM ""Bookings""
-                    WHERE ""BarberId"" = {dto.BarberId}
-                      AND ""BookingDate"" = {dto.BookingDate}
-                      AND ""Status"" != 'Cancelled'
-                      AND ""IsDeleted"" = false
-                    FOR UPDATE")
-                .Include(b => b.Service)
-                .ToListAsync();
-
-            var flatRequestedSlots = allRequestedSlots.SelectMany(x => x.slots).ToList();
-
-            foreach (var existing in activeBookings)
-            {
-                var existingSlots = GetOccupiedSlots(existing.BookingTime,
-                    existing.Service.DurationMinutes);
-
-                if (flatRequestedSlots.Any(rs => existingSlots.Contains(rs)))
-                {
-                    await transaction.RollbackAsync();
-                    return Conflict(new ProblemDetails
-                    {
-                        Status = 409,
-                        Title  = "Slot indisponível",
-                        Detail = "Um dos horários pedidos já está reservado."
-                    });
-                }
-            }
-
-            var createdBookings = new List<Booking>();
-            foreach (var (start, svc, _) in allRequestedSlots)
-            {
-                var booking = new Booking
-                {
-                    ClientName  = dto.ClientName,
-                    ClientPhone = dto.ClientPhone,
-                    BarberId    = dto.BarberId,
-                    ServiceId   = svc.Id,
-                    BookingDate = dto.BookingDate,
-                    BookingTime = start,
-                    Status      = "Pending",
-                    CreatedAt   = DateTime.UtcNow
-                };
-                _db.Bookings.Add(booking);
-                createdBookings.Add(booking);
-            }
-
-            await _db.SaveChangesAsync();
-            await transaction.CommitAsync();
-
-            var firstBooking = createdBookings.First();
-            var token = Guid.NewGuid().ToString();
-            await _redis.StringSetAsync(
-                $"confirm:{token}",
-                firstBooking.Id.ToString(),
-                TimeSpan.FromMinutes(15));
-
-            var serviceNames = string.Join(" + ", orderedServices.Select(s => s.Name));
-            var confirmLink  = $"https://elegancestudio.pt/confirmar/{token}";
-            await _sms.SendToClientAsync(dto.ClientPhone,
-                $"Marcação recebida! {serviceNames} — Confirme aqui: {confirmLink} (válido 15 min)");
-
-            await _sms.SendToBarberAsync(barber.Phone,
-                $"Nova marcação! {dto.ClientName} — {serviceNames} — " +
-                $"{dto.BookingDate} às {dto.BookingTime:HH\\:mm}");
-
-            var createdIds = createdBookings.Select(b => b.Id).ToList();
-            var fullBookings = await _db.Bookings
-                .Include(b => b.Barber)
-                .Include(b => b.Service)
-                .Where(b => createdIds.Contains(b.Id))
-                .OrderBy(b => b.BookingTime)
-                .ToListAsync();
-
-            var dateStr = dto.BookingDate.ToString("yyyy-MM-dd");
-            foreach (var fb in fullBookings)
-                await _hub.Clients
-                    .Group($"barber-{dto.BarberId}")
-                    .SendAsync("NewBooking", ToBarberDto(fb));
-
-            foreach (var slot in flatRequestedSlots)
-                await _hub.Clients
-                    .Group($"availability-{dto.BarberId}-{dateStr}")
-                    .SendAsync("SlotUnavailable", slot.ToString("HH\\:mm"));
-
-            return CreatedAtAction(nameof(GetById),
-                new { id = firstBooking.Id },
-                fullBookings.Select(ToPublicDto));
-        }
-        catch
-        {
-            await transaction.RollbackAsync();
-            throw;
-        }
+        var result = await _bookingService.CreateAsync(dto);
+        return ToPublicBookingsResult(result);
     }
 
     /// <summary>
@@ -258,42 +189,70 @@ public class BookingsController : ControllerBase
     }
 
     /// <summary>
-    /// GET /api/bookings/lookup?phone=...
+    /// POST /api/bookings/lookup/request
+    /// Envia um codigo de consulta para o email indicado, se houver marcacoes.
+    /// </summary>
+    [HttpPost("lookup/request")]
+    [EnableRateLimiting("lookup")]
+    public async Task<IActionResult> RequestLookupCode([FromBody] LookupRequestDto dto)
+    {
+        var email = NormalizeEmail(dto.Email);
+        var emailHash = ValueHash(email);
+
+        var hasBookings = await _db.Bookings
+            .AnyAsync(b => b.ClientEmail == email && b.Status != BookingStatus.Cancelled);
+
+        if (hasBookings)
+        {
+            var code = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
+            await _tokenStore.SetAsync(
+                $"lookup:{emailHash}:{code}",
+                email,
+                TimeSpan.FromMinutes(10));
+
+            await _email.SendAsync(
+                email,
+                "Cliente",
+                "Codigo para consultar marcacoes - Elegance Studio",
+                $"Codigo para consultar as suas marcacoes: {code} (valido 10 min)",
+                $"<p>O seu codigo para consultar marcacoes e <strong>{code}</strong>.</p><p>Valido durante 10 minutos.</p>");
+        }
+
+        return Accepted(new { message = "Se existirem marcacoes para este email, sera enviado um codigo." });
+    }
+
+    /// <summary>
+    /// GET /api/bookings/lookup?email=...&code=...
     /// </summary>
     [HttpGet("lookup")]
     [EnableRateLimiting("lookup")]
-    public async Task<IActionResult> Lookup([FromQuery] string phone)
+    public async Task<IActionResult> Lookup([FromQuery] string email, [FromQuery] string code)
     {
-        if (string.IsNullOrWhiteSpace(phone))
-            return Ok(Array.Empty<BookingPublicDto>());
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(code))
+            return BadRequest(new ProblemDetails
+            { Status = 400, Title = "Email e codigo sao obrigatorios." });
 
-        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(phone));
-        var cacheKey  = $"lookup:{Convert.ToHexString(hashBytes)}";
+        var normalizedEmail = NormalizeEmail(email);
+        var normalizedCode = code.Trim();
+        if (normalizedCode.Length != 6 || !normalizedCode.All(char.IsDigit))
+            return Unauthorized(new ProblemDetails { Status = 401, Title = "Codigo invalido ou expirado." });
 
-        var cached = await _redis.StringGetAsync(cacheKey);
-        if (cached.HasValue)
-        {
-            var cachedResult = System.Text.Json.JsonSerializer
-                .Deserialize<List<BookingPublicDto>>((string)cached!);
-            return Ok(cachedResult);
-        }
+        var lookupKey = $"lookup:{ValueHash(normalizedEmail)}:{normalizedCode}";
+        var storedEmail = await _tokenStore.GetAsync(lookupKey);
+        if (storedEmail != normalizedEmail)
+            return Unauthorized(new ProblemDetails { Status = 401, Title = "Codigo invalido ou expirado." });
 
-        // Global filter já exclui IsDeleted
+        await _tokenStore.DeleteAsync(lookupKey);
+
         var bookings = await _db.Bookings
             .Include(b => b.Barber)
             .Include(b => b.Service)
-            .Where(b => b.ClientPhone == phone && b.Status != "Cancelled")
+            .Where(b => b.ClientEmail == normalizedEmail && b.Status != BookingStatus.Cancelled)
             .OrderByDescending(b => b.BookingDate)
             .ThenByDescending(b => b.BookingTime)
             .ToListAsync();
 
-        var result = bookings.Select(ToPublicDto).ToList();
-
-        await _redis.StringSetAsync(cacheKey,
-            System.Text.Json.JsonSerializer.Serialize(result),
-            TimeSpan.FromMinutes(2));
-
-        return Ok(result);
+        return Ok(bookings.Select(ToPublicDto));
     }
 
     /// <summary>
@@ -302,40 +261,19 @@ public class BookingsController : ControllerBase
     [HttpGet("confirm/{token}")]
     public async Task<IActionResult> ConfirmByToken(string token)
     {
-        var bookingIdStr = await _redis.StringGetAsync($"confirm:{token}");
-        if (!bookingIdStr.HasValue)
-            return NotFound(new ProblemDetails
-                { Status = 404, Title = "Link inválido ou expirado." });
+        var result = await _bookingService.ConfirmByTokenAsync(token);
+        return ToPublicBookingsResult(result);
+    }
 
-        await _redis.KeyDeleteAsync($"confirm:{token}");
-
-        var bookingId = Guid.Parse((string)bookingIdStr!);
-
-        // .IgnoreQueryFilters() — token de confirmação pode chegar antes do
-        // IsDeleted ser limpo; não queremos falhar aqui
-        var booking = await _db.Bookings
-            .IgnoreQueryFilters()
-            .Include(b => b.Barber)
-            .Include(b => b.Service)
-            .FirstOrDefaultAsync(b => b.Id == bookingId && !b.IsDeleted);
-
-        if (booking == null)
-            return NotFound(new ProblemDetails
-                { Status = 404, Title = "Marcação não encontrada." });
-
-        booking.Status    = "Confirmed";
-        booking.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-
-        await _sms.SendToBarberAsync(booking.Barber.Phone,
-            $"Marcação confirmada! {booking.ClientName} — {booking.Service.Name} — " +
-            $"{booking.BookingDate} às {booking.BookingTime:HH\\:mm}");
-
-        await _hub.Clients
-            .Group($"barber-{booking.BarberId}")
-            .SendAsync("BookingUpdated", ToBarberDto(booking));
-
-        return Ok(ToPublicDto(booking));
+    /// <summary>
+    /// GET /api/bookings/barber-action/{action}/{token}
+    /// Link rapido enviado por email ao barbeiro para confirmar/cancelar.
+    /// </summary>
+    [HttpGet("barber-action/{action}/{token}")]
+    public async Task<IActionResult> HandleBarberAction(string action, string token)
+    {
+        var result = await _bookingService.HandleBarberActionAsync(action, token);
+        return ToPublicBookingsResult(result);
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -397,13 +335,16 @@ public class BookingsController : ControllerBase
         if (booking == null) return NotFound();
         if (!IsAuthorizedForBarber(booking.BarberId)) return Forbid();
 
-        booking.Status    = "Confirmed";
+        booking.Status    = BookingStatus.Confirmed;
         booking.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        await _sms.SendToClientAsync(booking.ClientPhone,
-            $"A sua marcação foi confirmada! {booking.Service.Name} — " +
-            $"{booking.BookingDate} às {booking.BookingTime:HH\\:mm}. Obrigado!");
+        await _email.SendAsync(
+            booking.ClientEmail,
+            booking.ClientName,
+            "Marcacao confirmada - Elegance Studio",
+            $"A sua marcacao foi confirmada! {booking.Service.Name} - {booking.BookingDate} as {booking.BookingTime:HH\\:mm}.",
+            $"<p>A sua marcação foi confirmada.</p><p><strong>{booking.Service.Name}</strong><br>{booking.BookingDate} às {booking.BookingTime:HH\\:mm}</p>");
 
         await _hub.Clients
             .Group($"barber-{booking.BarberId}")
@@ -427,16 +368,19 @@ public class BookingsController : ControllerBase
         if (booking == null) return NotFound();
         if (!IsAuthorizedForBarber(booking.BarberId)) return Forbid();
 
-        booking.Status    = "Cancelled";
+        booking.Status    = BookingStatus.Cancelled;
         booking.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        await _sms.SendToClientAsync(booking.ClientPhone,
-            $"A sua marcação de {booking.BookingDate} às {booking.BookingTime:HH\\:mm} " +
-            $"foi cancelada. Contacte-nos para reagendar.");
+        await _email.SendAsync(
+            booking.ClientEmail,
+            booking.ClientName,
+            "Marcacao cancelada - Elegance Studio",
+            $"A sua marcacao de {booking.BookingDate} as {booking.BookingTime:HH\\:mm} foi cancelada. Contacte-nos para reagendar.",
+            $"<p>A sua marcação de <strong>{booking.BookingDate} às {booking.BookingTime:HH\\:mm}</strong> foi cancelada.</p><p>Contacte-nos para reagendar.</p>");
 
         var dateStr    = booking.BookingDate.ToString("yyyy-MM-dd");
-        var freedSlots = GetOccupiedSlots(booking.BookingTime, booking.Service.DurationMinutes);
+        var freedSlots = BookingSlotCalculator.OccupiedSlots(booking.BookingTime, booking.Service.DurationMinutes);
         foreach (var slot in freedSlots)
             await _hub.Clients
                 .Group($"availability-{booking.BarberId}-{dateStr}")
@@ -473,10 +417,9 @@ public class BookingsController : ControllerBase
             return NotFound(new ProblemDetails
                 { Status = 404, Title = "Serviço não encontrado." });
 
-        var today = TodayInLisbon();
-        if (newDate < today)
-            return BadRequest(new ProblemDetails
-                { Status = 400, Title = "Não é possível marcar no passado." });
+        var scheduleError = ValidateSchedule(newDate, newTime, newService.DurationMinutes);
+        if (scheduleError is not null)
+            return BadRequest(new ProblemDetails { Status = 400, Title = scheduleError });
 
         await using var transaction = await _db.Database
             .BeginTransactionAsync(System.Data.IsolationLevel.RepeatableRead);
@@ -488,20 +431,21 @@ public class BookingsController : ControllerBase
                     SELECT * FROM ""Bookings""
                     WHERE ""BarberId"" = {booking.BarberId}
                       AND ""BookingDate"" = {newDate}
-                      AND ""Status"" != 'Cancelled'
+                      AND ""Status"" != {BookingStatus.Cancelled}
                       AND ""IsDeleted"" = false
                       AND ""Id"" != {id}
                     FOR UPDATE")
                 .Include(b => b.Service)
                 .ToListAsync();
 
-            var requestedSlots = GetOccupiedSlots(newTime, newService.DurationMinutes);
+            var requestedSlots = BookingSlotCalculator.OccupiedSlots(newTime, newService.DurationMinutes);
 
             foreach (var existing in activeBookings)
             {
-                var existingSlots = GetOccupiedSlots(existing.BookingTime,
-                    existing.Service.DurationMinutes);
-                if (requestedSlots.Any(rs => existingSlots.Contains(rs)))
+                if (BookingSlotCalculator.Overlaps(
+                    requestedSlots,
+                    existing.BookingTime,
+                    existing.Service.DurationMinutes))
                 {
                     await transaction.RollbackAsync();
                     return Conflict(new ProblemDetails
@@ -514,7 +458,7 @@ public class BookingsController : ControllerBase
             }
 
             var oldDate  = booking.BookingDate;
-            var oldSlots = GetOccupiedSlots(booking.BookingTime, booking.Service.DurationMinutes);
+            var oldSlots = BookingSlotCalculator.OccupiedSlots(booking.BookingTime, booking.Service.DurationMinutes);
 
             booking.BookingDate = newDate;
             booking.BookingTime = newTime;
@@ -592,6 +536,8 @@ public class BookingsController : ControllerBase
         // .IgnoreQueryFilters() para conseguir encontrar mesmo que já esteja deleted
         var booking = await _db.Bookings
             .IgnoreQueryFilters()
+            .Include(b => b.Barber)
+            .Include(b => b.Service)
             .FirstOrDefaultAsync(b => b.Id == id);
 
         if (booking == null || booking.IsDeleted) return NotFound();
@@ -600,6 +546,17 @@ public class BookingsController : ControllerBase
         booking.IsDeleted = true;
         booking.DeletedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+
+        var dateStr = booking.BookingDate.ToString("yyyy-MM-dd");
+        var freedSlots = BookingSlotCalculator.OccupiedSlots(booking.BookingTime, booking.Service.DurationMinutes);
+        foreach (var slot in freedSlots)
+            await _hub.Clients
+                .Group($"availability-{booking.BarberId}-{dateStr}")
+                .SendAsync("SlotAvailable", slot.ToString("HH\\:mm"));
+
+        await _hub.Clients
+            .Group($"barber-{booking.BarberId}")
+            .SendAsync("BookingDeleted", booking.Id);
 
         return NoContent();
     }

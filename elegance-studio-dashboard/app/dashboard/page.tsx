@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState, useEffect, useCallback, useMemo } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { getUser, isAuthenticated, clearAuth } from '@/lib/auth'
 import {
   getBarberDayBookings,
@@ -23,6 +23,7 @@ type Booking = {
   status: string
   clientName: string
   clientPhone: string
+  clientEmail: string
   createdAt: string
   updatedAt: string | null
 }
@@ -36,6 +37,11 @@ const HOURS = Array.from({ length: 11 }, (_, i) => i + 9) // 9..19
 
 function formatDate(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+}
+function parseDateParam(value: string) {
+  const [year, month, day] = value.split('-').map(Number)
+  if (!year || !month || !day) return null
+  return new Date(year, month - 1, day)
 }
 function timeToMins(t: string) {
   const [h, m] = t.split(':').map(Number)
@@ -59,7 +65,16 @@ function statusLabel(s: string) {
 }
 
 export default function DashboardPage() {
+  return (
+    <Suspense fallback={null}>
+      <DashboardContent />
+    </Suspense>
+  )
+}
+
+function DashboardContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [user, setUser]                 = useState<ReturnType<typeof getUser>>(null)
   const [barbers, setBarbers]           = useState<Barber[]>([])
   const [selectedDate, setSelectedDate] = useState(new Date())
@@ -70,6 +85,7 @@ export default function DashboardPage() {
   const [showNewBooking, setShowNewBooking]   = useState(false)
   const [filterBarber, setFilterBarber]       = useState('all')
   const [viewMode, setViewMode]         = useState<ViewMode>('list')
+  const [pendingLinkBookingId, setPendingLinkBookingId] = useState<string | null>(null)
 
   const selectedDateStr = formatDate(selectedDate)
 
@@ -77,6 +93,15 @@ export default function DashboardPage() {
     if (!isAuthenticated()) { router.push('/login'); return }
     setUser(getUser())
   }, [router])
+
+  useEffect(() => {
+    const bookingId = searchParams.get('bookingId')
+    const date = searchParams.get('date')
+    const parsedDate = date ? parseDateParam(date) : null
+
+    if (parsedDate) setSelectedDate(parsedDate)
+    if (bookingId) setPendingLinkBookingId(bookingId)
+  }, [searchParams])
 
   useEffect(() => {
     if (user?.role === 'Admin') getBarbers().then(setBarbers).catch(() => {})
@@ -97,6 +122,16 @@ export default function DashboardPage() {
   }, [user, selectedDateStr])
 
   useEffect(() => { fetchBookings() }, [fetchBookings])
+
+  useEffect(() => {
+    if (!pendingLinkBookingId || loading) return
+
+    const booking = bookings.find(b => b.id === pendingLinkBookingId)
+    if (!booking) return
+
+    setSelectedBooking(booking)
+    setPendingLinkBookingId(null)
+  }, [bookings, loading, pendingLinkBookingId])
 
   // ── SignalR — grupos a subscrever ─────────────────────────────────────────
   const signalRGroups = useMemo(() => {
@@ -126,6 +161,11 @@ export default function DashboardPage() {
       setBookings(prev => prev.map(x => x.id === b.id ? b : x))
       // Actualiza o modal se estiver aberto
       setSelectedBooking(prev => prev?.id === b.id ? b : prev)
+    },
+    BookingDeleted: (bookingId: unknown) => {
+      const id = String(bookingId)
+      setBookings(prev => prev.filter(x => x.id !== id))
+      setSelectedBooking(prev => prev?.id === id ? null : prev)
     },
   }), [selectedDateStr])
 
@@ -183,36 +223,38 @@ export default function DashboardPage() {
   if (!user) return null
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen bg-[#080808] text-white">
 
       {/* ── Header ── */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/12 bg-zinc-950/95 backdrop-blur-md">
-        <div className="max-w-5xl mx-auto flex items-center justify-between px-4 md:px-6 py-3">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-[#080808]/95 backdrop-blur-md">
+        <div className="max-w-6xl mx-auto flex items-center justify-between px-4 md:px-6 py-3">
           <div>
-            <h1 className="text-[14px] md:text-[16px] font-semibold tracking-wider text-white uppercase">
-              Elegance Studio
+            <p className="text-[10px] text-zinc-600 uppercase tracking-[0.28em]">Elegance Studio</p>
+            <h1 className="text-[15px] md:text-[18px] font-semibold tracking-wide text-white">
+              Agenda de {barberName}
             </h1>
             <p className="text-[11px] text-zinc-500 mt-0.5">
-              {barberName}{isAdmin && <span className="ml-1.5 text-zinc-700">· Admin</span>}
+              {selectedDate.getDate()} {MESES[selectedDate.getMonth()]} {selectedDate.getFullYear()}
+              {isAdmin && <span className="ml-2 text-zinc-700">Admin</span>}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex border border-white/15 overflow-hidden rounded">
+            <div className="hidden sm:flex border border-white/15 overflow-hidden">
               <button
                 onClick={() => setViewMode('list')}
-                className={`px-2.5 md:px-3 py-2 text-[11px] font-medium transition-all ${viewMode === 'list' ? 'bg-white text-black' : 'text-zinc-500 hover:text-white'}`}
-              >☰</button>
+                className={`px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] transition-all ${viewMode === 'list' ? 'bg-white text-black' : 'text-zinc-500 hover:text-white'}`}
+              >Lista</button>
               <button
                 onClick={() => setViewMode('timeline')}
-                className={`px-2.5 md:px-3 py-2 text-[11px] font-medium border-l border-white/15 transition-all ${viewMode === 'timeline' ? 'bg-white text-black' : 'text-zinc-500 hover:text-white'}`}
-              >⊞</button>
+                className={`px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] border-l border-white/15 transition-all ${viewMode === 'timeline' ? 'bg-white text-black' : 'text-zinc-500 hover:text-white'}`}
+              >Timeline</button>
             </div>
             {!isAdmin && (
               <button
                 onClick={() => setShowNewBooking(true)}
-                className="text-[11px] font-semibold tracking-wider uppercase text-black bg-white px-3 md:px-4 py-2 hover:bg-zinc-100 transition-all"
+                className="text-[10px] font-bold tracking-[0.22em] uppercase text-black bg-white px-3 md:px-4 py-2.5 hover:bg-zinc-200 transition-all"
               >
-                <span className="hidden md:inline">+ Nova Marcação</span>
+                <span className="hidden md:inline">Nova marcação</span>
                 <span className="md:hidden">+</span>
               </button>
             )}
@@ -224,8 +266,8 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="pt-[60px] pb-16 px-4 md:px-6">
-        <div className="max-w-5xl mx-auto">
+      <main className="pt-[72px] pb-16 px-4 md:px-6">
+        <div className="max-w-6xl mx-auto">
 
           {/* ── Navegação semana ── */}
           <div className="flex items-center justify-between py-4">
@@ -269,9 +311,9 @@ export default function DashboardPage() {
               { label: 'Confirmadas', value: stats.confirmed, color: 'text-emerald-400' },
               { label: 'Pendentes',   value: stats.pending,   color: 'text-yellow-400' },
             ].map(s => (
-              <div key={s.label} className="border border-white/12 px-3 md:px-5 py-4 bg-zinc-900/30">
-                <p className={`text-[28px] md:text-[32px] font-bold tabular-nums leading-none ${s.color}`}>{s.value}</p>
-                <p className="text-[9px] md:text-[10px] font-semibold text-zinc-600 uppercase tracking-widest mt-1.5">{s.label}</p>
+              <div key={s.label} className="border border-white/10 px-3 md:px-5 py-4 bg-white/[0.025]">
+                <p className="text-[9px] md:text-[10px] font-semibold text-zinc-600 uppercase tracking-[0.24em] mb-3">{s.label}</p>
+                <p className={`text-[30px] md:text-[36px] font-semibold tabular-nums leading-none ${s.color}`}>{s.value}</p>
               </div>
             ))}
           </div>
@@ -444,6 +486,7 @@ export default function DashboardPage() {
               {[
                 { label: 'Cliente',  value: selectedBooking.clientName },
                 { label: 'Telefone', value: selectedBooking.clientPhone },
+                { label: 'Email',    value: selectedBooking.clientEmail },
                 { label: 'Serviço',  value: selectedBooking.serviceName },
                 { label: 'Data',     value: selectedBooking.bookingDate },
                 { label: 'Hora',     value: selectedBooking.bookingTime.slice(0,5) },

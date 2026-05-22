@@ -1,199 +1,139 @@
 'use client'
-import { useState, useEffect } from 'react'
+
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { login } from '@/lib/api'
 import { saveAuth } from '@/lib/auth'
-
-function ScissorsLoader() {
-  return (
-    <div className="scissors-loader flex flex-col items-center gap-6">
-      <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-        <g className="scissors-blade-top">
-          <line x1="20" y1="20" x2="4" y2="6" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-          <circle cx="4" cy="5" r="3" stroke="white" strokeWidth="1.2" fill="none"/>
-        </g>
-        <g className="scissors-blade-bottom">
-          <line x1="20" y1="20" x2="4" y2="34" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-          <circle cx="4" cy="35" r="3" stroke="white" strokeWidth="1.2" fill="none"/>
-        </g>
-        <line x1="20" y1="20" x2="36" y2="20" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="3 3"/>
-        <circle cx="20" cy="20" r="2" fill="white" fillOpacity="0.6"/>
-      </svg>
-      <div className="w-32 h-px bg-zinc-800 relative overflow-hidden">
-        <div className="absolute inset-y-0 left-0 right-0 bg-white animate-sweep" />
-      </div>
-      <p className="text-[9px] tracking-[0.5em] text-zinc-600 uppercase">A autenticar</p>
-    </div>
-  )
-}
-
-function BackgroundLines() {
-  return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden" aria-hidden>
-      <div className="absolute inset-0 opacity-[0.025]"
-        style={{ backgroundImage: 'repeating-linear-gradient(135deg, white 0px, white 1px, transparent 1px, transparent 60px)' }}
-      />
-      {/* Cantos */}
-      <div className="absolute top-0 left-0 w-40 h-40 border-t-2 border-l-2 border-white/12" />
-      <div className="absolute top-0 right-0 w-40 h-40 border-t-2 border-r-2 border-white/12" />
-      <div className="absolute bottom-0 left-0 w-40 h-40 border-b-2 border-l-2 border-white/12" />
-      <div className="absolute bottom-0 right-0 w-40 h-40 border-b-2 border-r-2 border-white/12" />
-      {/* Círculos concêntricos no centro */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] border border-white/[0.04] rotate-45" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] border border-white/[0.04] rotate-45" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] border border-white/[0.04] rotate-45" />
-    </div>
-  )
-}
 
 export default function LoginPage() {
   const router = useRouter()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError]       = useState('')
-  const [loading, setLoading]   = useState(false)
-  const [mounted, setMounted]   = useState(false)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    const t = setTimeout(() => setMounted(true), 50)
-    return () => clearTimeout(t)
+    setMounted(true)
   }, [])
 
   const handleLogin = async () => {
+    if (!username.trim() || !password || loading) return
+
     setError('')
     setLoading(true)
     try {
-      const data = await login(username, password)
+      const data = await login(username.trim(), password)
       saveAuth(data)
       router.push('/dashboard')
     } catch {
-      setError('Credenciais inválidas.')
+      setError('Credenciais invalidas.')
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center px-6 relative overflow-hidden">
-      <BackgroundLines />
-
-      {loading && (
-        <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center animate-fade-in">
-          <ScissorsLoader />
-        </div>
-      )}
-
-      <div className={`w-full max-w-sm relative z-10 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-
-        {/* ── Logo ── */}
-        <div className="text-center mb-12">
-          {/* Linha decorativa branca com glow */}
-          <div className="flex items-center gap-3 justify-center mb-8">
-            <div className="h-px w-16 accent-line" />
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <rect x="5" y="0" width="2" height="12" fill="rgba(255,255,255,0.35)"/>
-              <rect x="0" y="5" width="12" height="2" fill="rgba(255,255,255,0.35)"/>
-            </svg>
-            <div className="h-px w-16 accent-line" />
-          </div>
-
-          {/* Título com glow branco */}
-          <h1
-            className="font-serif text-[clamp(3rem,10vw,76px)] uppercase tracking-tighter leading-[0.85] mb-4 animate-title-glow"
-            style={{ animationDelay: '100ms' }}
-          >
-            <span className="text-white" style={{
-              textShadow: '0 0 40px rgba(255,255,255,0.15), 0 0 80px rgba(255,255,255,0.06)'
-            }}>ELEGANCE</span><br />
-            <span className="text-zinc-600">STUDIO</span>
-          </h1>
-
-          {/* Sublinha decorativa */}
-          <div className="flex items-center gap-3 justify-center mt-5">
-            <div className="h-px w-10 bg-white/20" />
-            <p className="text-[9px] tracking-[0.8em] text-zinc-500 uppercase">Área de Gestão</p>
-            <div className="h-px w-10 bg-white/20" />
-          </div>
-        </div>
-
-        {/* ── Form ── */}
-        <div className="flex flex-col gap-5">
-
-          {/* Username */}
-          <div className={`animate-fade-slide-up ${mounted ? '' : 'opacity-0'}`}
-            style={{ animationDelay: '100ms', animationFillMode: 'forwards' }}>
-            <label className="text-[10px] font-semibold tracking-[0.5em] text-zinc-400 uppercase mb-2.5 block">
-              Utilizador
-            </label>
-            <div className="relative group">
-              <input
-                type="text"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                placeholder="username"
-                autoComplete="username"
-                className="input-elegant"
-              />
-              {/* Barra de foco animada */}
-              <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white scale-x-0 group-focus-within:scale-x-100 transition-transform duration-300 origin-left" />
+    <main className="min-h-screen bg-[#080808] text-white grid lg:grid-cols-[1fr_460px]">
+      <section className="hidden lg:flex relative overflow-hidden border-r border-white/10">
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:56px_56px]" />
+        <div className="relative z-10 flex flex-col justify-between w-full p-12">
+          <div className="flex items-center gap-4">
+            <Image src="/logo.png" alt="Elegance Studio" width={74} height={74} className="h-16 w-auto" priority />
+            <div>
+              <p className="text-[11px] tracking-[0.32em] uppercase text-zinc-500">Elegance Studio</p>
+              <h1 className="font-serif text-5xl uppercase leading-none tracking-tight">Gestao</h1>
             </div>
           </div>
 
-          {/* Password */}
-          <div className={`animate-fade-slide-up ${mounted ? '' : 'opacity-0'}`}
-            style={{ animationDelay: '200ms', animationFillMode: 'forwards' }}>
-            <label className="text-[10px] font-semibold tracking-[0.5em] text-zinc-400 uppercase mb-2.5 block">
-              Password
+          <div className="max-w-xl">
+            <p className="text-[11px] tracking-[0.4em] uppercase text-zinc-500 mb-5">Area reservada</p>
+            <h2 className="font-serif text-[76px] uppercase leading-[0.86] tracking-tight">
+              Agenda<br />
+              <span className="text-zinc-600">sem ruido</span>
+            </h2>
+            <p className="mt-8 max-w-md text-sm leading-7 text-zinc-400">
+              Consulta marcacoes, confirma clientes e mantem o dia organizado num painel pensado para trabalho real de barbearia.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 max-w-xl">
+            {[
+              ['Tempo real', 'SignalR ativo'],
+              ['Acesso seguro', 'JWT por perfil'],
+              ['Agenda diaria', 'Lista e timeline'],
+            ].map(([title, desc]) => (
+              <div key={title} className="border border-white/10 bg-white/[0.025] px-4 py-4">
+                <p className="text-[10px] uppercase tracking-[0.24em] text-zinc-300">{title}</p>
+                <p className="mt-2 text-[11px] text-zinc-600">{desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="flex min-h-screen items-center justify-center px-6 py-12">
+        <div className={`w-full max-w-sm transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}`}>
+          <div className="lg:hidden mb-10 flex justify-center">
+            <Image src="/logo.png" alt="Elegance Studio" width={92} height={92} priority />
+          </div>
+
+          <div className="mb-9">
+            <p className="text-[10px] uppercase tracking-[0.42em] text-zinc-500 mb-4">Dashboard</p>
+            <h1 className="font-serif text-5xl uppercase leading-none tracking-tight">Entrar</h1>
+            <p className="mt-4 text-sm leading-6 text-zinc-500">Usa as credenciais do barbeiro ou administrador.</p>
+          </div>
+
+          <div className="space-y-5">
+            <label className="block">
+              <span className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.32em] text-zinc-500">Utilizador</span>
+              <input
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleLogin()}
+                autoComplete="username"
+                className="input-elegant"
+                placeholder="ex: edi"
+              />
             </label>
-            <div className="relative group">
+
+            <label className="block">
+              <span className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.32em] text-zinc-500">Password</span>
               <input
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                placeholder="••••••••"
                 autoComplete="current-password"
                 className="input-elegant"
+                placeholder="A tua password"
               />
-              <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white scale-x-0 group-focus-within:scale-x-100 transition-transform duration-300 origin-left" />
-            </div>
-          </div>
+            </label>
 
-          {/* Erro */}
-          {error && (
-            <div className="animate-fade-in border border-red-500/25 bg-red-500/8 px-4 py-3 flex items-center gap-3">
-              <div className="w-1 h-4 bg-red-500/70 shrink-0" />
-              <p className="text-[11px] font-medium tracking-wide text-red-400">{error}</p>
-            </div>
-          )}
+            {error && (
+              <div className="border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                {error}
+              </div>
+            )}
 
-          {/* Botão */}
-          <div className={`animate-fade-slide-up mt-2 ${mounted ? '' : 'opacity-0'}`}
-            style={{ animationDelay: '300ms', animationFillMode: 'forwards' }}>
             <button
               onClick={handleLogin}
-              disabled={!username || !password || loading}
-              className={`w-full relative overflow-hidden flex items-center justify-center px-6 py-5 border text-[12px] font-semibold tracking-[0.4em] uppercase transition-all duration-300 group ${
-                username && password && !loading
-                  ? 'border-white/35 text-white hover:border-white hover:bg-white hover:text-black'
-                  : 'border-white/8 text-zinc-700 cursor-not-allowed'
+              disabled={!username.trim() || !password || loading}
+              className={`w-full min-h-14 border px-6 text-[11px] font-bold uppercase tracking-[0.32em] transition-all ${
+                username.trim() && password && !loading
+                  ? 'border-white bg-white text-black hover:bg-zinc-200'
+                  : 'border-white/10 text-zinc-700 cursor-not-allowed'
               }`}
             >
-              {username && password && !loading && (
-                <span className="absolute inset-0 bg-white translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
-              )}
-              <span className="relative z-10">Entrar</span>
+              {loading ? 'A entrar...' : 'Entrar'}
             </button>
           </div>
-        </div>
 
-        {/* Footer */}
-        <div className="mt-12 flex items-center gap-4 justify-center">
-          <div className="h-px flex-1 bg-white/8" />
-          <p className="text-[8px] tracking-[0.5em] text-zinc-800 uppercase">ES © 2026</p>
-          <div className="h-px flex-1 bg-white/8" />
+          <p className="mt-10 border-t border-white/8 pt-6 text-[10px] uppercase tracking-[0.28em] text-zinc-700">
+            Elegance Studio - Gestao interna
+          </p>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   )
 }

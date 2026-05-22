@@ -51,6 +51,7 @@ export default function BookingWizard() {
   const [selectedDate,     setSelectedDate]     = useState<Date | null>(null)
   const [selectedSlot,     setSelectedSlot]     = useState<string | null>(null)
   const [clientName,       setClientName]       = useState('')
+  const [clientEmail,      setClientEmail]      = useState('')
   const [phoneDigits,      setPhoneDigits]      = useState('')
 
   const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth())
@@ -68,6 +69,7 @@ export default function BookingWizard() {
     [selectedServices]
   )
   const clientPhone = '+351' + phoneDigits
+  const hasValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail.trim())
 
   // ─── Fetch barbers + services ────────────────────────────────────────────────
   useEffect(() => {
@@ -104,11 +106,10 @@ export default function BookingWizard() {
     setSelectedSlot(null)
 
     const params = new URLSearchParams({
-      barberId:      selectedBarber.id,
-      serviceId:     selectedServices[0].id,
-      date:          dateStr,
-      totalDuration: String(totalDuration),
+      barberId: selectedBarber.id,
+      date: dateStr,
     })
+    selectedServices.forEach(service => params.append('serviceIds', service.id))
 
     fetch(`${API}/api/availability?${params}`, { signal: controller.signal })
       .then(r => r.json())
@@ -144,7 +145,7 @@ export default function BookingWizard() {
   const handleSubmit = async () => {
     if (!selectedBarber || selectedServices.length === 0 ||
         !selectedDate || !selectedSlot || !clientName.trim() ||
-        phoneDigits.length !== 9) return
+        phoneDigits.length !== 9 || !hasValidEmail) return
 
     setSubmitting(true)
     setError('')
@@ -160,6 +161,7 @@ export default function BookingWizard() {
           bookingTime: selectedSlot,
           clientName:  clientName.trim(),
           clientPhone,
+          clientEmail: clientEmail.trim().toLowerCase(),
         }),
       })
 
@@ -509,13 +511,25 @@ export default function BookingWizard() {
                     />
                   </div>
                 </div>
+
+                <div>
+                  <label className="text-[10px] tracking-[0.4em] text-zinc-400 uppercase mb-3 block">Email</label>
+                  <input
+                    type="email"
+                    value={clientEmail}
+                    onChange={e => setClientEmail(e.target.value)}
+                    placeholder="email@exemplo.pt"
+                    maxLength={160}
+                    className="w-full bg-transparent border border-white/20 focus:border-white/60 outline-none px-6 py-4 text-[13px] text-white transition-all"
+                  />
+                </div>
               </div>
 
               <button
                 onClick={handleSubmit}
-                disabled={!clientName.trim() || phoneDigits.length !== 9 || submitting}
+                disabled={!clientName.trim() || phoneDigits.length !== 9 || !hasValidEmail || submitting}
                 className={`mt-10 w-full flex items-center justify-between px-8 py-6 border transition-all duration-300 ${
-                  clientName.trim() && phoneDigits.length === 9 && !submitting
+                  clientName.trim() && phoneDigits.length === 9 && hasValidEmail && !submitting
                     ? 'border-white/20 hover:bg-white hover:text-black cursor-pointer'
                     : 'border-white/5 text-zinc-700 cursor-not-allowed'
                 }`}
@@ -541,7 +555,7 @@ export default function BookingWizard() {
               <div className="w-16 h-16 border border-white bg-white text-black flex items-center justify-center mx-auto mb-8 text-[24px]">✓</div>
               <h2 className="font-serif text-[clamp(2rem,5vw,48px)] uppercase tracking-tighter mb-4">Marcação Recebida</h2>
               <p className="text-[12px] text-zinc-400 tracking-wider leading-relaxed max-w-md mx-auto mb-12">
-                Enviámos um SMS para <span className="text-zinc-200">{clientPhone}</span> com os detalhes da tua marcação.
+                Enviámos um email para <span className="text-zinc-200">{clientEmail}</span> com o link para confirmares a tua marcação.
               </p>
 
               <div className="border border-white/10 px-6 py-5 max-w-sm mx-auto bg-white/[0.02] mb-12">

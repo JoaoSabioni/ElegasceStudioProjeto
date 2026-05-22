@@ -19,7 +19,7 @@ public class ServicesController : ControllerBase
     public async Task<IActionResult> GetAll()
     {
         var services = await _db.Services
-            .Select(s => new { s.Id, s.Name, s.Price })
+            .Select(s => new { s.Id, s.Name, s.Price, s.DurationMinutes })
             .ToListAsync();
 
         return Ok(services);

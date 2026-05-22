@@ -37,7 +37,7 @@ public class BookingHub : Hub
         if (dateOnly > today.AddDays(60))
             throw new HubException("Data demasiado no futuro (máximo 60 dias).");
 
-        var exists = await _db.Barbers.AnyAsync(b => b.Id == barberGuid);
+        var exists = await _db.Barbers.AnyAsync(b => b.Id == barberGuid && b.IsActive);
         if (!exists)
             throw new HubException("Barbeiro não encontrado.");
 

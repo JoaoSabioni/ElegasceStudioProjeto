@@ -5,17 +5,24 @@ namespace EleganceStudio.API.Data;
 
 public static class DbSeeder
 {
-    public static async Task SeedAsync(AppDbContext db)
+    public static async Task SeedAsync(
+        AppDbContext db,
+        IConfiguration config,
+        IWebHostEnvironment environment)
     {
-        await db.Database.MigrateAsync();
+        var applyMigrations = config.GetValue<bool?>("Database:ApplyMigrationsOnStartup")
+            ?? environment.IsDevelopment();
+
+        if (applyMigrations)
+            await db.Database.MigrateAsync();
 
         if (!await db.Barbers.AnyAsync())
         {
             var barbers = new List<Barber>
             {
-                new Barber { Id = Guid.Parse("a1a1a1a1-0000-0000-0000-000000000001"), Name = "Edi",   Phone = "+351910000001", IsActive = true },
-                new Barber { Id = Guid.Parse("a1a1a1a1-0000-0000-0000-000000000002"), Name = "Tomas", Phone = "+351910000002", IsActive = true },
-                new Barber { Id = Guid.Parse("a1a1a1a1-0000-0000-0000-000000000003"), Name = "Abreu", Phone = "+351910000003", IsActive = true }
+                new Barber { Id = Guid.Parse("a1a1a1a1-0000-0000-0000-000000000001"), Name = "Edi",   Phone = "+351910000001", Email = "t82704366@gmail.com", IsActive = true },
+                new Barber { Id = Guid.Parse("a1a1a1a1-0000-0000-0000-000000000002"), Name = "Tomas", Phone = "+351910000002", Email = "t82704366@gmail.com", IsActive = true },
+                new Barber { Id = Guid.Parse("a1a1a1a1-0000-0000-0000-000000000003"), Name = "Abreu", Phone = "+351910000003", Email = "t82704366@gmail.com", IsActive = true }
             };
             var services = new List<Service>
             {
@@ -31,16 +38,93 @@ public static class DbSeeder
 
         if (!await db.Users.AnyAsync())
         {
-            var users = new List<User>
-            {
-                new User { Id = Guid.NewGuid(), Username = "admin", PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123"), Role = "Admin",  BarberId = null },
-                new User { Id = Guid.NewGuid(), Username = "edi",   PasswordHash = BCrypt.Net.BCrypt.HashPassword("edi123"),   Role = "Barber", BarberId = Guid.Parse("a1a1a1a1-0000-0000-0000-000000000001") },
-                new User { Id = Guid.NewGuid(), Username = "tomas", PasswordHash = BCrypt.Net.BCrypt.HashPassword("tomas123"), Role = "Barber", BarberId = Guid.Parse("a1a1a1a1-0000-0000-0000-000000000002") },
-                new User { Id = Guid.NewGuid(), Username = "abreu", PasswordHash = BCrypt.Net.BCrypt.HashPassword("abreu123"), Role = "Barber", BarberId = Guid.Parse("a1a1a1a1-0000-0000-0000-000000000003") }
-            };
-            await db.Users.AddRangeAsync(users);
+            var seedUsers = config
+                .GetSection("Seed:Users")
+                .Get<List<SeedUserOptions>>() ?? new List<SeedUserOptions>();
+
+            var users = BuildUsers(seedUsers, environment.IsDevelopment());
+            if (users.Count > 0)
+                await db.Users.AddRangeAsync(users);
         }
 
+        await ApplyBarberNotificationEmailsAsync(db, config);
+
         await db.SaveChangesAsync();
+    }
+
+    private static async Task ApplyBarberNotificationEmailsAsync(
+        AppDbContext db,
+        IConfiguration config)
+    {
+        var seedBarbers = config
+            .GetSection("Seed:Barbers")
+            .Get<List<SeedBarberOptions>>() ?? new List<SeedBarberOptions>();
+
+        foreach (var seedBarber in seedBarbers)
+        {
+            if (seedBarber.Id is null || string.IsNullOrWhiteSpace(seedBarber.Email))
+                continue;
+
+            var barber = await db.Barbers.FindAsync(seedBarber.Id.Value);
+            if (barber is null)
+                continue;
+
+            barber.Email = seedBarber.Email.Trim().ToLowerInvariant();
+        }
+    }
+
+    private static List<User> BuildUsers(
+        IEnumerable<SeedUserOptions> seedUsers,
+        bool allowWeakPasswords)
+    {
+        var users = new List<User>();
+        var usernames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var seedUser in seedUsers)
+        {
+            var username = seedUser.Username?.Trim();
+            var password = seedUser.Password?.Trim();
+            var role = seedUser.Role?.Trim();
+
+            if (string.IsNullOrWhiteSpace(username) ||
+                string.IsNullOrWhiteSpace(password) ||
+                string.IsNullOrWhiteSpace(role) ||
+                !usernames.Add(username))
+                continue;
+
+            if (!allowWeakPasswords && password.Length < 12)
+                continue;
+
+            if (role is not ("Admin" or "Barber"))
+                continue;
+
+            if (role == "Barber" && seedUser.BarberId is null)
+                continue;
+
+            users.Add(new User
+            {
+                Id = Guid.NewGuid(),
+                Username = username.ToLowerInvariant(),
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+                Role = role,
+                BarberId = role == "Barber" ? seedUser.BarberId : null
+            });
+        }
+
+        return users;
+    }
+
+    private sealed class SeedUserOptions
+    {
+        public string? Username { get; set; }
+        public string? Password { get; set; }
+        public string? Role { get; set; }
+        public Guid? BarberId { get; set; }
+    }
+
+    private sealed class SeedBarberOptions
+    {
+        public Guid? Id { get; set; }
+        public string? Email { get; set; }
     }
 }

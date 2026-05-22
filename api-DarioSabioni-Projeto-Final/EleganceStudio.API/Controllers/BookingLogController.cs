@@ -8,7 +8,7 @@ namespace EleganceStudio.API.Controllers;
 
 [ApiController]
 [Route("api/booking-logs")]
-[Authorize] // requer login — Admin ou Barber
+[Authorize(Roles = "Admin,Barber")]
 public class BookingLogsController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -28,7 +28,7 @@ public class BookingLogsController : ControllerBase
     public async Task<IActionResult> GetLogs([FromQuery] string filter = "7d")
     {
         var role     = User.FindFirstValue(ClaimTypes.Role);
-        var barberIdClaim = User.FindFirstValue("BarberId");
+        var barberIdClaim = User.FindFirstValue("barberId");
 
         // Calcula data mínima consoante o filtro
         var cutoff = filter switch
@@ -66,6 +66,7 @@ public class BookingLogsController : ControllerBase
                 BookingTime = l.BookingTime.ToString("HH:mm"),
                 l.ClientName,
                 l.ClientPhone,
+                l.ClientEmail,
                 l.Status,
                 l.CreatedAt,
                 l.ArchivedAt,

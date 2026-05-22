@@ -27,15 +27,6 @@ services:
       timeout: 5s
       retries: 5
 
-  mountebank:
-    image: bbyars/mountebank:2.9.1
-    ports:
-      - "2525:2525"
-      - "3003:3003"
-    volumes:
-      - ./imposter:/imposter
-    command: start --configfile /imposter/mountebank.json
-
   api:
     build:
       context: ./api-DarioSabioni-Projeto-Final
@@ -46,8 +37,13 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=elegance_studio;Username=postgres;Password=${POSTGRES_PASSWORD}
       - Jwt__SecretKey=${JWT_SECRET}
-      - SmsService__BaseUrl=${MOUNTEBANK_URL}
       - Redis__ConnectionString=redis:6379
+      - Email__BrevoApiKey=${Email__BrevoApiKey}
+      - Email__SenderEmail=${Email__SenderEmail}
+      - Email__SenderName=${Email__SenderName:-Elegance Studio}
+      - PublicLinks__ConfirmBookingBaseUrl=${PublicLinks__ConfirmBookingBaseUrl:-https://try-barbearia.vercel.app/confirmar}
+      - PublicLinks__DashboardBookingBaseUrl=${PublicLinks__DashboardBookingBaseUrl:-http://localhost:3001/dashboard}
+      - PublicLinks__BarberActionBaseUrl=${PublicLinks__BarberActionBaseUrl:-http://localhost:5134/api/bookings/barber-action}
     depends_on:
       postgres:
         condition: service_healthy

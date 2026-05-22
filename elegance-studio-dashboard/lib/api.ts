@@ -46,8 +46,12 @@ export async function getServices() {
 }
 
 // ─── Availability ─────────────────────────────────────────────────────────────
-export async function getAvailability(barberId: string, date: string, serviceId: string) {
-  const res = await request(`/api/availability?barberId=${barberId}&date=${date}&serviceId=${serviceId}`)
+export async function getAvailability(barberId: string, date: string, serviceIds: string[] | string) {
+  const ids = Array.isArray(serviceIds) ? serviceIds : [serviceIds]
+  const params = new URLSearchParams({ barberId, date })
+  ids.forEach(id => params.append('serviceIds', id))
+
+  const res = await request(`/api/availability?${params}`)
   if (!res.ok) throw new Error('Erro ao carregar disponibilidade')
   return res.json()
 }
@@ -101,7 +105,7 @@ export async function updateBooking(id: string, data: { bookingDate?: string; bo
     method: 'PUT',
     body: JSON.stringify(data),
   })
-  if (res.status === 409) throw new Error('Horário já ocupado')
+  if (res.status === 409) throw new Error('BOOKING_CONFLICT')
   if (!res.ok) throw new Error('Erro ao editar')
   return res.json()
 }
@@ -113,12 +117,13 @@ export async function createBooking(data: {
   bookingTime: string
   clientName: string
   clientPhone: string
+  clientEmail: string
 }) {
   const res = await request('/api/bookings', {
     method: 'POST',
     body: JSON.stringify(data),
   })
-  if (res.status === 409) throw new Error('Horário já ocupado')
+  if (res.status === 409) throw new Error('BOOKING_CONFLICT')
   if (!res.ok) throw new Error('Erro ao criar marcação')
   return res.json()
 }
@@ -129,9 +134,19 @@ export async function deleteBooking(id: string) {
 }
 
 // ─── Lookup público ───────────────────────────────────────────────────────────
-export async function lookupBooking(phone: string) {
-  const res = await fetch(`${API}/api/bookings/lookup?phone=${encodeURIComponent(phone)}`)
-  if (!res.ok) throw new Error('Marcação não encontrada')
+export async function requestLookupCode(email: string) {
+  const res = await fetch(`${API}/api/bookings/lookup/request`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  })
+  if (!res.ok) throw new Error('Erro ao pedir codigo de consulta')
+}
+
+export async function lookupBooking(email: string, code: string) {
+  const params = new URLSearchParams({ email, code })
+  const res = await fetch(`${API}/api/bookings/lookup?${params}`)
+  if (!res.ok) throw new Error('Codigo invalido ou marcacao nao encontrada')
   return res.json()
 }
 

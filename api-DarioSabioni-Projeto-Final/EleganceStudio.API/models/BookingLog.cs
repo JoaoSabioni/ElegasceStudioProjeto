@@ -28,6 +28,7 @@ public class BookingLog
     // Cliente
     public string ClientName { get; set; } = string.Empty;
     public string ClientPhone { get; set; } = string.Empty;
+    public string ClientEmail { get; set; } = string.Empty;
 
     // Estado final quando foi arquivada
     public string Status { get; set; } = string.Empty;

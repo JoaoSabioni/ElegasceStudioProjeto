@@ -28,18 +28,30 @@ namespace EleganceStudio.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
 
                     b.Property<string>("Phone")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Email");
+
+                    b.HasIndex("Phone")
+                        .IsUnique();
 
                     b.ToTable("Barbers");
 
@@ -47,6 +59,7 @@ namespace EleganceStudio.API.Migrations
                         new
                         {
                             Id = new Guid("a1a1a1a1-0000-0000-0000-000000000001"),
+                            Email = "t82704366@gmail.com",
                             IsActive = true,
                             Name = "Edi",
                             Phone = "+351933320269"
@@ -54,6 +67,7 @@ namespace EleganceStudio.API.Migrations
                         new
                         {
                             Id = new Guid("a1a1a1a1-0000-0000-0000-000000000002"),
+                            Email = "t82704366@gmail.com",
                             IsActive = true,
                             Name = "Tomas",
                             Phone = "+351914302079"
@@ -61,6 +75,7 @@ namespace EleganceStudio.API.Migrations
                         new
                         {
                             Id = new Guid("a1a1a1a1-0000-0000-0000-000000000003"),
+                            Email = "t82704366@gmail.com",
                             IsActive = true,
                             Name = "Abreu",
                             Phone = "+351913388301"
@@ -82,13 +97,20 @@ namespace EleganceStudio.API.Migrations
                     b.Property<TimeOnly>("BookingTime")
                         .HasColumnType("time without time zone");
 
+                    b.Property<string>("ClientEmail")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
                     b.Property<string>("ClientName")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("ClientPhone")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -104,7 +126,8 @@ namespace EleganceStudio.API.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -112,6 +135,8 @@ namespace EleganceStudio.API.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BookingDate");
+
+                    b.HasIndex("ClientEmail");
 
                     b.HasIndex("ClientPhone");
 
@@ -123,7 +148,10 @@ namespace EleganceStudio.API.Migrations
                         .IsUnique()
                         .HasFilter("\"Status\" != 'Cancelled' AND \"IsDeleted\" = false");
 
-                    b.ToTable("Bookings");
+                    b.ToTable("Bookings", t =>
+                        {
+                            t.HasCheckConstraint("CK_Bookings_Status", "\"Status\" IN ('Pending', 'Confirmed', 'Cancelled')");
+                        });
                 });
 
             modelBuilder.Entity("EleganceStudio.API.Models.BookingLog", b =>
@@ -140,7 +168,8 @@ namespace EleganceStudio.API.Migrations
 
                     b.Property<string>("BarberName")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
 
                     b.Property<DateOnly>("BookingDate")
                         .HasColumnType("date");
@@ -148,13 +177,20 @@ namespace EleganceStudio.API.Migrations
                     b.Property<TimeOnly>("BookingTime")
                         .HasColumnType("time without time zone");
 
+                    b.Property<string>("ClientEmail")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
                     b.Property<string>("ClientName")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("ClientPhone")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -167,14 +203,17 @@ namespace EleganceStudio.API.Migrations
 
                     b.Property<string>("ServiceName")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
 
                     b.Property<decimal>("ServicePrice")
-                        .HasColumnType("numeric");
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.HasKey("Id");
 
@@ -185,6 +224,53 @@ namespace EleganceStudio.API.Migrations
                     b.HasIndex("BookingDate");
 
                     b.ToTable("BookingLogs");
+                });
+
+            modelBuilder.Entity("EleganceStudio.API.Models.NotificationLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("Recipient")
+                        .IsRequired()
+                        .HasMaxLength(180)
+                        .HasColumnType("character varying(180)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(180)
+                        .HasColumnType("character varying(180)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("Recipient");
+
+                    b.ToTable("NotificationLogs");
                 });
 
             modelBuilder.Entity("EleganceStudio.API.Models.Service", b =>
@@ -198,14 +284,21 @@ namespace EleganceStudio.API.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
 
                     b.Property<decimal>("Price")
-                        .HasColumnType("numeric");
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Services");
+                    b.ToTable("Services", t =>
+                        {
+                            t.HasCheckConstraint("CK_Services_Duration_Positive", "\"DurationMinutes\" > 0");
+
+                            t.HasCheckConstraint("CK_Services_Price_NonNegative", "\"Price\" >= 0");
+                        });
 
                     b.HasData(
                         new
@@ -256,51 +349,27 @@ namespace EleganceStudio.API.Migrations
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("Role")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("Username")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Users");
+                    b.HasIndex("Username")
+                        .IsUnique();
 
-                    b.HasData(
-                        new
+                    b.ToTable("Users", t =>
                         {
-                            Id = new Guid("c0c0c0c0-0000-0000-0000-000000000001"),
-                            PasswordHash = "$2a$11$F/3ALbxtG0XpFPvj7tuu8ONJDu2ibccJ5N8k8zMXuNxb1Ov9E1yH2",
-                            Role = "Admin",
-                            Username = "admin"
-                        },
-                        new
-                        {
-                            Id = new Guid("c0c0c0c0-0000-0000-0000-000000000002"),
-                            BarberId = new Guid("a1a1a1a1-0000-0000-0000-000000000001"),
-                            PasswordHash = "$2a$11$WXBksBKQ34WTNrK6RIzMW.69t8rkf9YExC76gCorB2X8qmc.hC8OC",
-                            Role = "Barber",
-                            Username = "edi"
-                        },
-                        new
-                        {
-                            Id = new Guid("c0c0c0c0-0000-0000-0000-000000000003"),
-                            BarberId = new Guid("a1a1a1a1-0000-0000-0000-000000000002"),
-                            PasswordHash = "$2a$11$EVSVBwepA4jz0NmsYc5Z7uzNbGgJsiZ7ATTdFuD.GCg.OtpnzjhQi",
-                            Role = "Barber",
-                            Username = "tomas"
-                        },
-                        new
-                        {
-                            Id = new Guid("c0c0c0c0-0000-0000-0000-000000000004"),
-                            BarberId = new Guid("a1a1a1a1-0000-0000-0000-000000000003"),
-                            PasswordHash = "$2a$11$mg0855dOiHUJrpllFodIK.6o9AZE9LcHpatNSqhBe76Y946OfgFf.",
-                            Role = "Barber",
-                            Username = "abreu"
+                            t.HasCheckConstraint("CK_Users_Role", "\"Role\" IN ('Admin', 'Barber')");
                         });
                 });
 

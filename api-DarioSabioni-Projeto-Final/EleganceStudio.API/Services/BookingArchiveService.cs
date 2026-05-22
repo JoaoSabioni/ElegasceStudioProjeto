@@ -118,7 +118,8 @@ public class BookingArchiveService : BackgroundService
                 BookingTime            = b.BookingTime,
                 ClientName             = b.ClientName,
                 ClientPhone            = b.ClientPhone,
-                Status                 = b.IsDeleted ? "Deleted" : b.Status,
+                ClientEmail            = b.ClientEmail,
+                Status                 = b.IsDeleted ? BookingStatus.Deleted : b.Status,
                 CreatedAt              = b.CreatedAt,
                 ArchivedAt             = DateTime.UtcNow,
             }).ToList();
