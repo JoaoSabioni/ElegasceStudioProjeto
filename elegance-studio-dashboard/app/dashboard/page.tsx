@@ -68,6 +68,21 @@ const BARBER_PROFILES = [
   },
 ]
 
+const CLIENT_MURAL_IMAGES = [
+  '/Fotos_edi/edi3.png',
+  '/Fotos_Tomas/tomas3.png',
+  '/Fotos_Abreu/abreu1.png',
+  '/Fotos_edi/edi4.png',
+  '/Fotos_Tomas/tomas4.png',
+  '/Fotos_Abreu/abreu2.png',
+  '/Fotos_edi/edi5.png',
+  '/Fotos_Tomas/tomas5.png',
+  '/Fotos_Abreu/abreu3.png',
+  '/Fotos_Tomas/tomas6.png',
+  '/Fotos_Abreu/abreu4.png',
+  '/Fotos_Abreu/abreu5.png',
+]
+
 function formatDate(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 }
@@ -250,6 +265,9 @@ function DashboardContent() {
     ? 'Administrador'
     : barbers.find(b => b.id === user?.barberId)?.name ?? 'Barbeiro'
   const activeProfile = BARBER_PROFILES.find(profile => profile.name === barberName)
+  const selectedProfile = isAdmin && filterBarber !== 'all'
+    ? BARBER_PROFILES.find(profile => profile.name === filterBarber)
+    : activeProfile
   const profileList = isAdmin ? BARBER_PROFILES : activeProfile ? [activeProfile] : BARBER_PROFILES
 
   const HOUR_HEIGHT    = 72
@@ -260,18 +278,14 @@ function DashboardContent() {
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#070604] text-white">
       <div aria-hidden="true" className="fixed inset-0 pointer-events-none">
-        <div className="absolute inset-0 grid grid-cols-3 opacity-[0.16]">
-          <div className="relative hidden md:block">
-            <Image src="/Fotos_loja/loja1.png" alt="" fill className="object-cover" priority />
-          </div>
-          <div className="relative">
-            <Image src="/Fotos_loja/loja3.png" alt="" fill className="object-cover" priority />
-          </div>
-          <div className="relative hidden sm:block">
-            <Image src="/Fotos_loja/loja4.png" alt="" fill className="object-cover" priority />
-          </div>
+        <div className="absolute inset-0 grid grid-cols-3 md:grid-cols-4 opacity-[0.18]">
+          {CLIENT_MURAL_IMAGES.map((src, index) => (
+            <div key={src} className={`relative min-h-[22vh] ${index % 5 === 0 ? 'row-span-2' : ''}`}>
+              <Image src={src} alt="" fill className="object-cover grayscale" sizes="25vw" priority={index < 4} />
+            </div>
+          ))}
         </div>
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,#070604_0%,rgba(7,6,4,0.86)_36%,rgba(7,6,4,0.94)_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,#070604_0%,rgba(7,6,4,0.86)_42%,rgba(7,6,4,0.96)_100%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_10%,rgba(255,255,255,0.08),transparent_36%)]" />
       </div>
 
@@ -384,13 +398,13 @@ function DashboardContent() {
               </div>
             </div>
             <div className="relative min-h-[150px] overflow-hidden border border-white/10 bg-black/20">
-              <Image src={activeProfile?.photo ?? '/Fotos_loja/loja4.png'} alt={activeProfile?.name ?? STUDIO.name} fill className="object-cover opacity-70" sizes="(max-width: 1024px) 100vw, 380px" />
+              <Image src={selectedProfile?.photo ?? '/Fotos_Tomas/tomas5.png'} alt={selectedProfile?.name ?? STUDIO.name} fill className="object-cover opacity-70" sizes="(max-width: 1024px) 100vw, 380px" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
               <div className="absolute bottom-4 left-4 right-4">
                 <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-400">
-                  {activeProfile ? activeProfile.role : 'Equipa'}
+                  {selectedProfile ? selectedProfile.role : 'Equipa'}
                 </p>
-                <p className="mt-1 text-[22px] font-semibold">{activeProfile?.name ?? 'Edi · Tomas · Abreu'}</p>
+                <p className="mt-1 text-[22px] font-semibold">{selectedProfile?.name ?? 'Edi · Tomas · Abreu'}</p>
               </div>
             </div>
           </section>
@@ -410,7 +424,7 @@ function DashboardContent() {
 
           {/* ── Filtro admin ── */}
           {isAdmin && barbers.length > 0 && (
-            <div className="flex items-center gap-1.5 mb-4 flex-wrap">
+            <div className="hidden">
               <span className="text-[9px] font-semibold tracking-widest text-zinc-600 uppercase mr-1">Filtrar:</span>
               {['all', ...barbers.map(b => b.name)].map(name => (
                 <button
@@ -427,19 +441,44 @@ function DashboardContent() {
           )}
 
           {/* ── Data label ── */}
-          <div className="mb-5 grid gap-2 md:grid-cols-3">
+          <div className="mb-5">
+            {isAdmin && (
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <p className="text-[9px] font-semibold uppercase tracking-[0.32em] text-zinc-600">Filtrar por barbeiro</p>
+                {filterBarber !== 'all' && (
+                  <button
+                    onClick={() => setFilterBarber('all')}
+                    className="text-[9px] font-bold uppercase tracking-[0.24em] text-zinc-500 hover:text-white"
+                  >
+                    Ver todos
+                  </button>
+                )}
+              </div>
+            )}
+            <div className="grid gap-2 md:grid-cols-3">
             {profileList.map(profile => (
-              <div key={profile.name} className="flex items-center gap-3 border border-white/10 bg-black/22 p-3 backdrop-blur-sm">
+              <button
+                key={profile.name}
+                type="button"
+                onClick={() => isAdmin && setFilterBarber(profile.name)}
+                disabled={!isAdmin}
+                className={`group flex items-center gap-3 border p-3 text-left backdrop-blur-sm transition-all ${
+                  filterBarber === profile.name
+                    ? 'border-white/60 bg-white text-black'
+                    : 'border-white/10 bg-black/22 hover:border-white/35 hover:bg-white/[0.06]'
+                } ${isAdmin ? 'cursor-pointer' : 'cursor-default'}`}
+              >
                 <div className="relative h-12 w-12 shrink-0 overflow-hidden border border-white/10">
                   <Image src={profile.photo} alt={profile.name} fill className="object-cover" sizes="48px" />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-[13px] font-semibold text-zinc-100">{profile.name}</p>
+                  <p className={`truncate text-[13px] font-semibold ${filterBarber === profile.name ? 'text-black' : 'text-zinc-100'}`}>{profile.name}</p>
                   <p className="truncate text-[10px] uppercase tracking-[0.18em] text-zinc-500">{profile.role} · {profile.instagram}</p>
-                  <p className="mt-0.5 truncate text-[11px] text-zinc-400">{profile.phone}</p>
+                  <p className={`mt-0.5 truncate text-[11px] ${filterBarber === profile.name ? 'text-zinc-700' : 'text-zinc-400'}`}>{profile.phone}</p>
                 </div>
-              </div>
+              </button>
             ))}
+            </div>
           </div>
 
           <div className="flex items-center gap-3 mb-4">

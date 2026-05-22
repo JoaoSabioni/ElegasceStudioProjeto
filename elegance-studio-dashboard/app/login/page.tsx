@@ -6,6 +6,21 @@ import { useEffect, useState } from 'react'
 import { login } from '@/lib/api'
 import { saveAuth } from '@/lib/auth'
 
+const CLIENT_MURAL_IMAGES = [
+  '/Fotos_edi/edi3.png',
+  '/Fotos_Tomas/tomas3.png',
+  '/Fotos_Abreu/abreu1.png',
+  '/Fotos_edi/edi4.png',
+  '/Fotos_Tomas/tomas4.png',
+  '/Fotos_Abreu/abreu2.png',
+  '/Fotos_edi/edi5.png',
+  '/Fotos_Tomas/tomas5.png',
+  '/Fotos_Abreu/abreu3.png',
+  '/Fotos_Tomas/tomas6.png',
+  '/Fotos_Abreu/abreu4.png',
+  '/Fotos_Abreu/abreu5.png',
+]
+
 export default function LoginPage() {
   const router = useRouter()
   const [username, setUsername] = useState('')
@@ -36,16 +51,12 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen bg-[#070604] text-white grid lg:grid-cols-[1fr_460px]">
       <section className="hidden lg:flex relative overflow-hidden border-r border-white/10">
-        <div className="absolute inset-0 grid grid-cols-3 opacity-40">
-          <div className="relative">
-            <Image src="/Fotos_loja/loja1.png" alt="" fill className="object-cover" priority />
-          </div>
-          <div className="relative">
-            <Image src="/Fotos_loja/loja3.png" alt="" fill className="object-cover" priority />
-          </div>
-          <div className="relative">
-            <Image src="/Fotos_loja/loja4.png" alt="" fill className="object-cover" priority />
-          </div>
+        <div className="absolute inset-0 grid grid-cols-4 opacity-[0.34]">
+          {CLIENT_MURAL_IMAGES.map((src, index) => (
+            <div key={src} className={`relative min-h-[24vh] ${index % 5 === 0 ? 'row-span-2' : ''}`}>
+              <Image src={src} alt="" fill className="object-cover grayscale" sizes="25vw" priority={index < 4} />
+            </div>
+          ))}
         </div>
         <div className="absolute inset-0 bg-[linear-gradient(90deg,#070604_0%,rgba(7,6,4,0.78)_46%,rgba(7,6,4,0.94)_100%)]" />
         <div className="relative z-10 flex flex-col justify-between w-full p-12">
@@ -85,7 +96,7 @@ export default function LoginPage() {
 
       <section className="relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-12">
         <div className="absolute inset-0 lg:hidden">
-          <Image src="/Fotos_loja/loja3.png" alt="" fill className="object-cover opacity-20" priority />
+          <Image src="/Fotos_Tomas/tomas5.png" alt="" fill className="object-cover opacity-20" priority />
           <div className="absolute inset-0 bg-[#070604]/88" />
         </div>
         <div className={`w-full max-w-sm transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}`}>
