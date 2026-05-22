@@ -2,7 +2,12 @@ import { useEffect, useRef, useCallback } from 'react'
 import * as signalR from '@microsoft/signalr'
 import { getToken } from './auth'
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5134'
+const LOCAL_API = 'http://localhost:5134'
+const PRODUCTION_API = 'https://elegascestudioprojeto-production.up.railway.app'
+const API = process.env.NEXT_PUBLIC_API_URL ||
+  (typeof window !== 'undefined' && window.location.hostname !== 'localhost'
+    ? PRODUCTION_API
+    : LOCAL_API)
 
 type EventMap = Record<string, (...args: unknown[]) => void>
 
