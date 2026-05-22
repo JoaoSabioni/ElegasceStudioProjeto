@@ -36,16 +36,11 @@ public static class DbSeeder
             await db.Services.AddRangeAsync(services);
         }
 
-        if (!await db.Users.AnyAsync())
-        {
-            var seedUsers = config
-                .GetSection("Seed:Users")
-                .Get<List<SeedUserOptions>>() ?? new List<SeedUserOptions>();
+        var seedUsers = config
+            .GetSection("Seed:Users")
+            .Get<List<SeedUserOptions>>() ?? new List<SeedUserOptions>();
 
-            var users = BuildUsers(seedUsers, environment.IsDevelopment());
-            if (users.Count > 0)
-                await db.Users.AddRangeAsync(users);
-        }
+        await ApplySeedUsersAsync(db, seedUsers, environment.IsDevelopment());
 
         await ApplyBarberNotificationEmailsAsync(db, config);
 
@@ -73,11 +68,12 @@ public static class DbSeeder
         }
     }
 
-    private static List<User> BuildUsers(
+    private static async Task ApplySeedUsersAsync(
+        AppDbContext db,
         IEnumerable<SeedUserOptions> seedUsers,
         bool allowWeakPasswords)
     {
-        var users = new List<User>();
+        var existingUsers = await db.Users.ToListAsync();
         var usernames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var seedUser in seedUsers)
@@ -101,17 +97,30 @@ public static class DbSeeder
             if (role == "Barber" && seedUser.BarberId is null)
                 continue;
 
-            users.Add(new User
-            {
-                Id = Guid.NewGuid(),
-                Username = username.ToLowerInvariant(),
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
-                Role = role,
-                BarberId = role == "Barber" ? seedUser.BarberId : null
-            });
-        }
+            var normalizedUsername = username.ToLowerInvariant();
+            var existingUser = existingUsers.FirstOrDefault(user =>
+                user.Username.Equals(normalizedUsername, StringComparison.OrdinalIgnoreCase));
 
-        return users;
+            if (existingUser is null)
+            {
+                await db.Users.AddAsync(new User
+                {
+                    Id = Guid.NewGuid(),
+                    Username = normalizedUsername,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+                    Role = role,
+                    BarberId = role == "Barber" ? seedUser.BarberId : null
+                });
+
+                continue;
+            }
+
+            existingUser.Role = role;
+            existingUser.BarberId = role == "Barber" ? seedUser.BarberId : null;
+
+            if (!BCrypt.Net.BCrypt.Verify(password, existingUser.PasswordHash))
+                existingUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
+        }
     }
 
     private sealed class SeedUserOptions
