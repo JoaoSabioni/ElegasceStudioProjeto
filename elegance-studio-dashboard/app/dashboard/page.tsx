@@ -1,6 +1,7 @@
 'use client'
 
 import { Suspense, useState, useEffect, useCallback, useMemo } from 'react'
+import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getUser, isAuthenticated, clearAuth } from '@/lib/auth'
 import {
@@ -34,6 +35,38 @@ type ViewMode = 'list' | 'timeline'
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 const DIAS  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
 const HOURS = Array.from({ length: 11 }, (_, i) => i + 9) // 9..19
+
+const STUDIO = {
+  name: 'Elegance Studio',
+  location: 'Pinhal Novo',
+  country: 'Portugal',
+  phone: '+351 933 320 269',
+  hours: '09:00 - 19:00',
+}
+
+const BARBER_PROFILES = [
+  {
+    name: 'Edi',
+    role: 'Fundador',
+    phone: '+351 933 320 269',
+    instagram: '@edisimoess',
+    photo: '/Fotos_edi/edi2.png',
+  },
+  {
+    name: 'Tomas',
+    role: 'Colaborador',
+    phone: '+351 914 302 079',
+    instagram: '@_tomas21_',
+    photo: '/Fotos_Tomas/tomas2.png',
+  },
+  {
+    name: 'Abreu',
+    role: 'Colaborador',
+    phone: '+351 913 388 301',
+    instagram: '@abreeubarber',
+    photo: '/Fotos_Abreu/abreuPrincipal.jpg',
+  },
+]
 
 function formatDate(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
@@ -216,6 +249,8 @@ function DashboardContent() {
   const barberName = isAdmin
     ? 'Administrador'
     : barbers.find(b => b.id === user?.barberId)?.name ?? 'Barbeiro'
+  const activeProfile = BARBER_PROFILES.find(profile => profile.name === barberName)
+  const profileList = isAdmin ? BARBER_PROFILES : activeProfile ? [activeProfile] : BARBER_PROFILES
 
   const HOUR_HEIGHT    = 72
   const TIMELINE_START = 9 * 60
@@ -223,13 +258,32 @@ function DashboardContent() {
   if (!user) return null
 
   return (
-    <div className="min-h-screen bg-[#080808] text-white">
+    <div className="relative min-h-screen overflow-hidden bg-[#070604] text-white">
+      <div aria-hidden="true" className="fixed inset-0 pointer-events-none">
+        <div className="absolute inset-0 grid grid-cols-3 opacity-[0.16]">
+          <div className="relative hidden md:block">
+            <Image src="/Fotos_loja/loja1.png" alt="" fill className="object-cover" priority />
+          </div>
+          <div className="relative">
+            <Image src="/Fotos_loja/loja3.png" alt="" fill className="object-cover" priority />
+          </div>
+          <div className="relative hidden sm:block">
+            <Image src="/Fotos_loja/loja4.png" alt="" fill className="object-cover" priority />
+          </div>
+        </div>
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,#070604_0%,rgba(7,6,4,0.86)_36%,rgba(7,6,4,0.94)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_10%,rgba(255,255,255,0.08),transparent_36%)]" />
+      </div>
 
       {/* ── Header ── */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-[#080808]/95 backdrop-blur-md">
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-4 md:px-6 py-3">
-          <div>
-            <p className="text-[10px] text-zinc-600 uppercase tracking-[0.28em]">Elegance Studio</p>
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-[#070604]/88 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto flex items-center justify-between px-4 md:px-6 py-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="relative h-10 w-10 shrink-0 overflow-hidden border border-white/12 bg-white/5">
+              <Image src="/logo.png" alt="Elegance Studio" fill className="object-contain p-1.5" priority />
+            </div>
+            <div className="min-w-0">
+            <p className="text-[10px] text-zinc-500 uppercase tracking-[0.28em]">{STUDIO.name}</p>
             <h1 className="text-[15px] md:text-[18px] font-semibold tracking-wide text-white">
               Agenda de {barberName}
             </h1>
@@ -237,6 +291,7 @@ function DashboardContent() {
               {selectedDate.getDate()} {MESES[selectedDate.getMonth()]} {selectedDate.getFullYear()}
               {isAdmin && <span className="ml-2 text-zinc-700">Admin</span>}
             </p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <div className="hidden sm:flex border border-white/15 overflow-hidden">
@@ -266,8 +321,8 @@ function DashboardContent() {
         </div>
       </header>
 
-      <main className="pt-[72px] pb-16 px-4 md:px-6">
-        <div className="max-w-6xl mx-auto">
+      <main className="relative z-10 pt-[72px] pb-16 px-4 md:px-6">
+        <div className="max-w-7xl mx-auto">
 
           {/* ── Navegação semana ── */}
           <div className="flex items-center justify-between py-4">
@@ -305,6 +360,41 @@ function DashboardContent() {
           </div>
 
           {/* ── Stats ── */}
+          <section className="mb-5 grid gap-3 lg:grid-cols-[1.35fr_0.65fr]">
+            <div className="border border-white/10 bg-[#0d0b08]/72 p-4 md:p-5 backdrop-blur-md">
+              <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-zinc-500">
+                    {STUDIO.location} · {STUDIO.country}
+                  </p>
+                  <h2 className="mt-2 text-[24px] font-semibold leading-tight text-white md:text-[32px]">
+                    Agenda operacional da {STUDIO.name}
+                  </h2>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-right md:min-w-[320px]">
+                  <div className="border border-white/8 bg-white/[0.03] px-3 py-2.5">
+                    <p className="text-[9px] uppercase tracking-[0.24em] text-zinc-600">Horario</p>
+                    <p className="mt-1 text-[13px] font-semibold text-zinc-200">{STUDIO.hours}</p>
+                  </div>
+                  <div className="border border-white/8 bg-white/[0.03] px-3 py-2.5">
+                    <p className="text-[9px] uppercase tracking-[0.24em] text-zinc-600">Telefone</p>
+                    <p className="mt-1 text-[13px] font-semibold text-zinc-200">{STUDIO.phone}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="relative min-h-[150px] overflow-hidden border border-white/10 bg-black/20">
+              <Image src={activeProfile?.photo ?? '/Fotos_loja/loja4.png'} alt={activeProfile?.name ?? STUDIO.name} fill className="object-cover opacity-70" sizes="(max-width: 1024px) 100vw, 380px" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+              <div className="absolute bottom-4 left-4 right-4">
+                <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-400">
+                  {activeProfile ? activeProfile.role : 'Equipa'}
+                </p>
+                <p className="mt-1 text-[22px] font-semibold">{activeProfile?.name ?? 'Edi · Tomas · Abreu'}</p>
+              </div>
+            </div>
+          </section>
+
           <div className="grid grid-cols-3 gap-2 md:gap-3 mb-5">
             {[
               { label: 'Total',       value: stats.total,     color: 'text-white' },
@@ -337,6 +427,21 @@ function DashboardContent() {
           )}
 
           {/* ── Data label ── */}
+          <div className="mb-5 grid gap-2 md:grid-cols-3">
+            {profileList.map(profile => (
+              <div key={profile.name} className="flex items-center gap-3 border border-white/10 bg-black/22 p-3 backdrop-blur-sm">
+                <div className="relative h-12 w-12 shrink-0 overflow-hidden border border-white/10">
+                  <Image src={profile.photo} alt={profile.name} fill className="object-cover" sizes="48px" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-[13px] font-semibold text-zinc-100">{profile.name}</p>
+                  <p className="truncate text-[10px] uppercase tracking-[0.18em] text-zinc-500">{profile.role} · {profile.instagram}</p>
+                  <p className="mt-0.5 truncate text-[11px] text-zinc-400">{profile.phone}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
           <div className="flex items-center gap-3 mb-4">
             <div className="h-px flex-1 bg-white/8" />
             <p className="text-[10px] font-semibold tracking-[0.4em] text-zinc-600 uppercase shrink-0">
