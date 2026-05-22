@@ -96,9 +96,6 @@ export default function LoginPage() {
           <div className="relative mb-9">
             <p className="text-[10px] uppercase tracking-[0.42em] text-zinc-500 mb-4">Elegance Studio</p>
             <h1 className="font-serif text-5xl uppercase leading-none tracking-tight">Entrar</h1>
-            <p className="mt-4 text-sm leading-6 text-zinc-500">
-              Acesso reservado a barbeiros e administracao da barbearia em Pinhal Novo.
-            </p>
           </div>
 
           <div className="relative mb-7 grid grid-cols-3 gap-2">
@@ -122,7 +119,7 @@ export default function LoginPage() {
                 onKeyDown={e => e.key === 'Enter' && handleLogin()}
                 autoComplete="username"
                 className="input-elegant"
-                placeholder="ex: edi"
+                placeholder="Utilizador"
               />
             </label>
 
