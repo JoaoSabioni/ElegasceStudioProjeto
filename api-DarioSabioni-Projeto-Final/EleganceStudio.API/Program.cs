@@ -98,7 +98,8 @@ var allowedOrigins = builder.Configuration
     {
         "http://localhost:3000",
         "http://localhost:3001",
-        "https://try-barbearia.vercel.app"
+        "https://elegasce-studio-projeto.vercel.app",
+        "https://elegasce-studio-projeto-qmhi.vercel.app"
     };
 
 builder.Services.AddCors(options =>

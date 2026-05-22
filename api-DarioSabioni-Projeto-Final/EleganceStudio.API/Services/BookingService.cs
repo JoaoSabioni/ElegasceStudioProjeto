@@ -353,11 +353,12 @@ public class BookingService : IBookingService
         var confirmBaseUrl = _config["PublicLinks:ConfirmBookingBaseUrl"] ?? "https://elegancestudio.pt/confirmar";
         var confirmLink = $"{confirmBaseUrl.TrimEnd('/')}/{confirmationToken}";
         var firstBooking = fullBookings[0];
-        var dashboardBaseUrl = _config["PublicLinks:DashboardBookingBaseUrl"] ?? "http://localhost:3001/dashboard";
+        var dashboardBaseUrl = _config["PublicLinks:DashboardBookingBaseUrl"]
+            ?? "https://elegasce-studio-projeto-qmhi.vercel.app/dashboard";
         var dashboardLink = $"{dashboardBaseUrl.TrimEnd('/')}" +
             $"?bookingId={firstBooking.Id}&barberId={dto.BarberId}&date={dto.BookingDate:yyyy-MM-dd}";
         var barberActionBaseUrl = _config["PublicLinks:BarberActionBaseUrl"]
-            ?? "http://localhost:5134/api/bookings/barber-action";
+            ?? "https://elegascestudioprojeto-production.up.railway.app/api/bookings/barber-action";
         var barberConfirmToken = await StoreBarberActionTokenAsync(fullBookings, "confirmar");
         var barberCancelToken = await StoreBarberActionTokenAsync(fullBookings, "cancelar");
         var barberConfirmLink = $"{barberActionBaseUrl.TrimEnd('/')}/confirmar/{barberConfirmToken}";
