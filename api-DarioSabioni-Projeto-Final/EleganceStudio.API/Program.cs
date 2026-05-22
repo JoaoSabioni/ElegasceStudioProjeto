@@ -12,6 +12,10 @@ using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var railwayPort = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(railwayPort))
+    builder.WebHost.UseUrls($"http://0.0.0.0:{railwayPort}");
+
 ValidateStartupConfiguration(builder.Configuration, builder.Environment);
 
 if (builder.Environment.IsDevelopment())
@@ -130,13 +134,21 @@ builder.Services.AddHostedService<BookingArchiveService>();
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
+{
     app.MapOpenApi();
+    app.UseHttpsRedirection();
+}
 
-app.UseHttpsRedirection();
 app.UseRateLimiter();
 app.UseCors("AllowFrontends");
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapGet("/health", () => Results.Ok(new
+{
+    status = "ok",
+    service = "EleganceStudio.API",
+    time = DateTime.UtcNow
+}));
 app.MapControllers();
 app.MapHub<EleganceStudio.API.Hubs.BookingHub>("/hubs/bookings");
 
