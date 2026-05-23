@@ -68,21 +68,6 @@ const BARBER_PROFILES = [
   },
 ]
 
-const CLIENT_MURAL_IMAGES = [
-  '/Fotos_edi/edi3.png',
-  '/Fotos_Tomas/tomas3.png',
-  '/Fotos_Abreu/abreu1.png',
-  '/Fotos_edi/edi4.png',
-  '/Fotos_Tomas/tomas4.png',
-  '/Fotos_Abreu/abreu2.png',
-  '/Fotos_edi/edi5.png',
-  '/Fotos_Tomas/tomas5.png',
-  '/Fotos_Abreu/abreu3.png',
-  '/Fotos_Tomas/tomas6.png',
-  '/Fotos_Abreu/abreu4.png',
-  '/Fotos_Abreu/abreu5.png',
-]
-
 function formatDate(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 }
@@ -278,15 +263,11 @@ function DashboardContent() {
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#070604] text-white">
       <div aria-hidden="true" className="fixed inset-0 pointer-events-none">
-        <div className="absolute inset-0 grid grid-cols-3 md:grid-cols-4 opacity-[0.18]">
-          {CLIENT_MURAL_IMAGES.map((src, index) => (
-            <div key={src} className={`relative min-h-[22vh] ${index % 5 === 0 ? 'row-span-2' : ''}`}>
-              <Image src={src} alt="" fill className="object-cover grayscale" sizes="25vw" priority={index < 4} />
-            </div>
-          ))}
+        <div className="absolute inset-y-0 right-0 w-full md:w-[58%] opacity-[0.16]">
+          <Image src="/Fotos_loja/loja3.png" alt="" fill className="object-cover object-center grayscale" priority />
         </div>
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,#070604_0%,rgba(7,6,4,0.86)_42%,rgba(7,6,4,0.96)_100%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_10%,rgba(255,255,255,0.08),transparent_36%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,#050505_0%,rgba(5,5,5,0.94)_42%,rgba(5,5,5,0.78)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_48%_0%,rgba(255,255,255,0.08),transparent_32%)]" />
       </div>
 
       {/* ── Header ── */}
@@ -398,7 +379,7 @@ function DashboardContent() {
               </div>
             </div>
             <div className="relative min-h-[150px] overflow-hidden border border-white/10 bg-black/20">
-              <Image src={selectedProfile?.photo ?? '/Fotos_Tomas/tomas5.png'} alt={selectedProfile?.name ?? STUDIO.name} fill className="object-cover opacity-70" sizes="(max-width: 1024px) 100vw, 380px" />
+              <Image src="/Fotos_loja/loja4.png" alt={STUDIO.name} fill className="object-cover opacity-70" sizes="(max-width: 1024px) 100vw, 380px" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
               <div className="absolute bottom-4 left-4 right-4">
                 <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-400">
@@ -422,25 +403,7 @@ function DashboardContent() {
             ))}
           </div>
 
-          {/* ── Filtro admin ── */}
-          {isAdmin && barbers.length > 0 && (
-            <div className="hidden">
-              <span className="text-[9px] font-semibold tracking-widest text-zinc-600 uppercase mr-1">Filtrar:</span>
-              {['all', ...barbers.map(b => b.name)].map(name => (
-                <button
-                  key={name}
-                  onClick={() => setFilterBarber(name)}
-                  className={`text-[10px] font-semibold tracking-wider uppercase px-3 py-1.5 border transition-all ${
-                    filterBarber === name
-                      ? 'border-white/50 text-white bg-white/8'
-                      : 'border-white/12 text-zinc-500 hover:border-white/30 hover:text-zinc-300'
-                  }`}
-                >{name === 'all' ? 'Todos' : name}</button>
-              ))}
-            </div>
-          )}
-
-          {/* ── Data label ── */}
+          {/* Date and barber filters */}
           <div className="mb-5">
             {isAdmin && (
               <div className="mb-2 flex items-center justify-between gap-3">
