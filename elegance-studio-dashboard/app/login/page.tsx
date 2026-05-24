@@ -10,6 +10,7 @@ export default function LoginPage() {
   const router = useRouter()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -117,15 +118,37 @@ export default function LoginPage() {
 
             <label className="block">
               <span className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.32em] text-zinc-500">Password</span>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                autoComplete="current-password"
-                className="input-elegant"
-                placeholder="A tua password"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleLogin()}
+                  autoComplete="current-password"
+                  className="input-elegant pr-12"
+                  placeholder="A tua password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(value => !value)}
+                  aria-label={showPassword ? 'Esconder password' : 'Mostrar password'}
+                  className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-zinc-600 transition-colors hover:text-white focus:outline-none focus:text-white"
+                >
+                  {showPassword ? (
+                    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m3 3 18 18" />
+                      <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+                      <path d="M9.9 4.2A9.8 9.8 0 0 1 12 4c5 0 8.2 4.2 9.3 6a3.8 3.8 0 0 1 0 4" />
+                      <path d="M6.5 6.5A16.5 16.5 0 0 0 2.7 10a3.8 3.8 0 0 0 0 4C3.8 15.8 7 20 12 20c1.5 0 2.9-.4 4.1-1" />
+                    </svg>
+                  ) : (
+                    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M2.7 10a3.8 3.8 0 0 0 0 4C3.8 15.8 7 20 12 20s8.2-4.2 9.3-6a3.8 3.8 0 0 0 0-4C20.2 8.2 17 4 12 4S3.8 8.2 2.7 10Z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </label>
 
             {error && (
