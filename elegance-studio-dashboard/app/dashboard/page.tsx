@@ -253,7 +253,6 @@ function DashboardContent() {
   const selectedProfile = isAdmin && filterBarber !== 'all'
     ? BARBER_PROFILES.find(profile => profile.name === filterBarber)
     : activeProfile
-  const profileList = isAdmin ? BARBER_PROFILES : activeProfile ? [activeProfile] : BARBER_PROFILES
 
   const HOUR_HEIGHT    = 72
   const TIMELINE_START = 9 * 60
@@ -403,9 +402,8 @@ function DashboardContent() {
             ))}
           </div>
 
-          {/* Date and barber filters */}
-          <div className="mb-5">
-            {isAdmin && (
+          {isAdmin && (
+            <div className="mb-5">
               <div className="mb-2 flex items-center justify-between gap-3">
                 <p className="text-[9px] font-semibold uppercase tracking-[0.32em] text-zinc-600">Filtrar por barbeiro</p>
                 {filterBarber !== 'all' && (
@@ -417,32 +415,32 @@ function DashboardContent() {
                   </button>
                 )}
               </div>
-            )}
-            <div className="grid gap-2 md:grid-cols-3">
-            {profileList.map(profile => (
-              <button
-                key={profile.name}
-                type="button"
-                onClick={() => isAdmin && setFilterBarber(profile.name)}
-                disabled={!isAdmin}
-                className={`group flex items-center gap-3 border p-3 text-left backdrop-blur-sm transition-all ${
-                  filterBarber === profile.name
-                    ? 'border-white/60 bg-white text-black'
-                    : 'border-white/10 bg-black/22 hover:border-white/35 hover:bg-white/[0.06]'
-                } ${isAdmin ? 'cursor-pointer' : 'cursor-default'}`}
-              >
-                <div className="relative h-12 w-12 shrink-0 overflow-hidden border border-white/10">
-                  <Image src={profile.photo} alt={profile.name} fill className="object-cover" sizes="48px" />
-                </div>
-                <div className="min-w-0">
-                  <p className={`truncate text-[13px] font-semibold ${filterBarber === profile.name ? 'text-black' : 'text-zinc-100'}`}>{profile.name}</p>
-                  <p className="truncate text-[10px] uppercase tracking-[0.18em] text-zinc-500">{profile.role} · {profile.instagram}</p>
-                  <p className={`mt-0.5 truncate text-[11px] ${filterBarber === profile.name ? 'text-zinc-700' : 'text-zinc-400'}`}>{profile.phone}</p>
-                </div>
-              </button>
-            ))}
+
+              <div className="grid gap-2 md:grid-cols-3">
+                {BARBER_PROFILES.map(profile => (
+                  <button
+                    key={profile.name}
+                    type="button"
+                    onClick={() => setFilterBarber(profile.name)}
+                    className={`group flex items-center gap-3 border p-3 text-left backdrop-blur-sm transition-all ${
+                      filterBarber === profile.name
+                        ? 'border-white/60 bg-white text-black'
+                        : 'border-white/10 bg-black/22 hover:border-white/35 hover:bg-white/[0.06]'
+                    }`}
+                  >
+                    <div className="relative h-12 w-12 shrink-0 overflow-hidden border border-white/10">
+                      <Image src={profile.photo} alt={profile.name} fill className="object-cover" sizes="48px" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className={`truncate text-[13px] font-semibold ${filterBarber === profile.name ? 'text-black' : 'text-zinc-100'}`}>{profile.name}</p>
+                      <p className="truncate text-[10px] uppercase tracking-[0.18em] text-zinc-500">{profile.role} · {profile.instagram}</p>
+                      <p className={`mt-0.5 truncate text-[11px] ${filterBarber === profile.name ? 'text-zinc-700' : 'text-zinc-400'}`}>{profile.phone}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="flex items-center gap-3 mb-4">
             <div className="h-px flex-1 bg-white/8" />
