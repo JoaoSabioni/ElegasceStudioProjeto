@@ -59,7 +59,7 @@ export default function NewBookingModal({ onClose, onCreated }: NewBookingModalP
     (total, id) => total + (services.find(service => service.id === id)?.durationMinutes ?? 0),
     0
   )
-  const hasValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail.trim())
+  const hasValidEmail = /^[^\s@]+@[^\s@]+$/.test(clientEmail.trim())
 
   useEffect(() => {
     getBarbers().then(setBarbers).catch(() => {})
@@ -151,7 +151,7 @@ export default function NewBookingModal({ onClose, onCreated }: NewBookingModalP
     }
 
     if (!hasValidEmail) {
-      setError('Insere um email valido. Exemplo: cliente@email.pt')
+      setError('Insere um email valido. Exemplo: cliente@email')
       return
     }
 

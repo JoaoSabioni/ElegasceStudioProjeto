@@ -74,7 +74,7 @@ export default function BookingWizard() {
     [selectedServices]
   )
   const clientPhone = '+351' + phoneDigits
-  const hasValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail.trim())
+  const hasValidEmail = /^[^\s@]+@[^\s@]+$/.test(clientEmail.trim())
 
   // ─── Fetch barbers + services ────────────────────────────────────────────────
   useEffect(() => {

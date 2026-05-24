@@ -23,6 +23,6 @@ public class BookingRequestDto
     [Required, RegularExpression(@"^\+351\s?\d{3}\s?\d{3}\s?\d{3}$|^\+351\d{9}$", ErrorMessage = "Formato inválido. Use +351XXXXXXXXX")]
     public string ClientPhone { get; set; } = string.Empty;
 
-    [Required, EmailAddress, MaxLength(160)]
+    [Required, RegularExpression(@"^[^@\s]+@[^@\s]+$", ErrorMessage = "Formato invalido. Use nome@dominio"), MaxLength(160)]
     public string ClientEmail { get; set; } = string.Empty;
 }
