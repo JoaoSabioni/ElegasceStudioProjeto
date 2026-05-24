@@ -125,9 +125,43 @@ export default function NewBookingModal({ onClose, onCreated }: NewBookingModalP
   }
 
   const handleSubmit = async () => {
-    if (!barberId || selectedServiceIds.length === 0 || !clientName.trim() ||
-        !phone || phone.trim() === '+351' || !hasValidEmail || !bookingDate || !selectedTime) {
-      setError('Preenche todos os campos e adiciona pelo menos um servico.')
+    if (!barberId) {
+      setError('Seleciona um barbeiro.')
+      return
+    }
+
+    if (selectedServiceIds.length === 0) {
+      setError('Adiciona pelo menos um servico.')
+      return
+    }
+
+    if (!clientName.trim()) {
+      setError('Preenche o nome do cliente.')
+      return
+    }
+
+    if (!phone || phone.trim() === '+351') {
+      setError('Preenche o telefone do cliente.')
+      return
+    }
+
+    if (!clientEmail.trim()) {
+      setError('Preenche o email do cliente.')
+      return
+    }
+
+    if (!hasValidEmail) {
+      setError('Insere um email valido. Exemplo: cliente@email.pt')
+      return
+    }
+
+    if (!bookingDate) {
+      setError('Seleciona uma data.')
+      return
+    }
+
+    if (!selectedTime) {
+      setError('Seleciona uma hora.')
       return
     }
 
