@@ -253,6 +253,8 @@ function DashboardContent() {
   const selectedProfile = isAdmin && filterBarber !== 'all'
     ? BARBER_PROFILES.find(profile => profile.name === filterBarber)
     : activeProfile
+  const heroLabel = isAdmin && !selectedProfile ? 'Equipa' : selectedProfile?.role
+  const heroTitle = isAdmin && !selectedProfile ? 'Edi · Tomas · Abreu' : selectedProfile?.name ?? barberName
 
   const HOUR_HEIGHT    = 72
   const TIMELINE_START = 9 * 60
@@ -382,9 +384,9 @@ function DashboardContent() {
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
               <div className="absolute bottom-4 left-4 right-4">
                 <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-400">
-                  {selectedProfile ? selectedProfile.role : 'Equipa'}
+                  {heroLabel}
                 </p>
-                <p className="mt-1 text-[22px] font-semibold">{selectedProfile?.name ?? 'Edi · Tomas · Abreu'}</p>
+                <p className="mt-1 text-[22px] font-semibold">{heroTitle}</p>
               </div>
             </div>
           </section>
