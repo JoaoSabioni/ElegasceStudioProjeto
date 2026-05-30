@@ -95,7 +95,7 @@ img {
   left: 50%;
   top: 50%;
   width: 100%;
-  height: 18px;
+  height: 12px;
   transform: translate(-50%, -50%);
   z-index: 3;
 }
@@ -103,7 +103,7 @@ img {
 .opening-ribbon span {
   position: absolute;
   top: 0;
-  width: calc(50% - 8px);
+  width: 50%;
   height: 100%;
   background:
     linear-gradient(90deg, rgba(255, 255, 255, 0.16), transparent 18%),
@@ -779,7 +779,7 @@ h3 {
   }
 
   .opening-ribbon {
-    height: 15px;
+    height: 10px;
   }
 
   .opening-scissors {
