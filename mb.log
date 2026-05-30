@@ -1,4 +1,0 @@
-{"level":"info","message":"[mb:2525] mountebank v2.9.1 now taking orders - point your browser to http://localhost:2525/ for help","timestamp":"2026-04-22T21:51:12.644Z"}
-{"level":"info","message":"[mb:2525] PUT /imposters","timestamp":"2026-04-22T21:51:12.665Z"}
-{"level":"info","message":"[http:3003 Mock SMS Service] Open for business...","timestamp":"2026-04-22T21:51:12.667Z"}
-{"level":"info","message":"[mb:2525] Adios - see you soon?","timestamp":"2026-04-22T21:54:15.374Z"}
