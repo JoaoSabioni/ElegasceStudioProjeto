@@ -13,7 +13,7 @@ if (pageLoader) {
     window.setTimeout(() => {
       pageLoader.classList.add("hide");
       document.body.classList.remove("loading");
-    }, 420);
+    }, 1700);
   });
 }
 
