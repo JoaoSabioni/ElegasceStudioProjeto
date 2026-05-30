@@ -9,6 +9,13 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <div class="page-loader" data-page-loader>
+    <div class="loader-mark">
+      <img src="assets/logo.png" alt="Elegance Studio">
+      <span class="loader-scissors" aria-hidden="true">✂</span>
+    </div>
+  </div>
+
   <nav class="nav">
     <div class="nav-inner">
       <a class="brand" href="index.html"><img src="assets/logo.png" alt="Elegance Studio"></a>
@@ -31,7 +38,7 @@
   <main>
     <section class="section page-heading">
       <div class="section-inner">
-        <p class="eyebrow">Pinhal Novo · Est. 2025</p>
+        <p class="eyebrow">Pinhal Novo · Est. <span data-current-year>2025</span></p>
         <h1>Galeria</h1>
       </div>
     </section>
@@ -41,10 +48,10 @@
         <p class="eyebrow">Espaço</p>
         <h2>O estúdio</h2>
         <div class="gallery-grid studio-gallery">
-          <button data-gallery-image="assets/Fotos_loja/loja1.png"><img src="assets/Fotos_loja/loja1.png" alt="Loja Elegance Studio"></button>
-          <button data-gallery-image="assets/Fotos_loja/loja2.png"><img src="assets/Fotos_loja/loja2.png" alt="Loja Elegance Studio"></button>
-          <button data-gallery-image="assets/Fotos_loja/loja3.png"><img src="assets/Fotos_loja/loja3.png" alt="Loja Elegance Studio"></button>
-          <button data-gallery-image="assets/Fotos_loja/loja4.png"><img src="assets/Fotos_loja/loja4.png" alt="Loja Elegance Studio"></button>
+          <button data-gallery-group="loja" data-gallery-image="assets/Fotos_loja/loja1.png"><img src="assets/Fotos_loja/loja1.png" alt="Loja Elegance Studio"></button>
+          <button data-gallery-group="loja" data-gallery-image="assets/Fotos_loja/loja2.png"><img src="assets/Fotos_loja/loja2.png" alt="Loja Elegance Studio"></button>
+          <button data-gallery-group="loja" data-gallery-image="assets/Fotos_loja/loja3.png"><img src="assets/Fotos_loja/loja3.png" alt="Loja Elegance Studio"></button>
+          <button data-gallery-group="loja" data-gallery-image="assets/Fotos_loja/loja4.png"><img src="assets/Fotos_loja/loja4.png" alt="Loja Elegance Studio"></button>
         </div>
       </div>
     </section>
@@ -56,7 +63,7 @@
 
         <div class="barber-grid">
           <article class="barber-card">
-            <button class="barber-main" data-gallery-image="assets/Fotos_edi/edi2.png">
+            <button class="barber-main" data-gallery-group="edi" data-gallery-image="assets/Fotos_edi/edi2.png">
               <img src="assets/Fotos_edi/edi2.png" alt="Edi">
             </button>
             <div class="barber-card-body">
@@ -68,16 +75,16 @@
                 <a class="barber-phone" href="tel:+351933320269">+351 933 320 269</a>
               </div>
               <div class="gallery-grid barber-work">
-                <button data-gallery-image="assets/Fotos_edi/edi3.png"><img src="assets/Fotos_edi/edi3.png" alt="Trabalho Edi"></button>
-                <button data-gallery-image="assets/Fotos_edi/edi4.png"><img src="assets/Fotos_edi/edi4.png" alt="Trabalho Edi"></button>
-                <button data-gallery-image="assets/Fotos_edi/edi5.png"><img src="assets/Fotos_edi/edi5.png" alt="Trabalho Edi"></button>
-                <button data-gallery-image="assets/Fotos_edi/edi6.png"><img src="assets/Fotos_edi/edi6.png" alt="Trabalho Edi"></button>
+                <button data-gallery-group="edi" data-gallery-image="assets/Fotos_edi/edi3.png"><img src="assets/Fotos_edi/edi3.png" alt="Trabalho Edi"></button>
+                <button data-gallery-group="edi" data-gallery-image="assets/Fotos_edi/edi4.png"><img src="assets/Fotos_edi/edi4.png" alt="Trabalho Edi"></button>
+                <button data-gallery-group="edi" data-gallery-image="assets/Fotos_edi/edi5.png"><img src="assets/Fotos_edi/edi5.png" alt="Trabalho Edi"></button>
+                <button data-gallery-group="edi" data-gallery-image="assets/Fotos_edi/edi6.png"><img src="assets/Fotos_edi/edi6.png" alt="Trabalho Edi"></button>
               </div>
             </div>
           </article>
 
           <article class="barber-card">
-            <button class="barber-main" data-gallery-image="assets/Fotos_Tomas/tomas2.png">
+            <button class="barber-main" data-gallery-group="tomas" data-gallery-image="assets/Fotos_Tomas/tomas2.png">
               <img src="assets/Fotos_Tomas/tomas2.png" alt="Tomas">
             </button>
             <div class="barber-card-body">
@@ -89,16 +96,16 @@
                 <a class="barber-phone" href="tel:+351914302079">+351 914 302 079</a>
               </div>
               <div class="gallery-grid barber-work">
-                <button data-gallery-image="assets/Fotos_Tomas/tomas3.png"><img src="assets/Fotos_Tomas/tomas3.png" alt="Trabalho Tomas"></button>
-                <button data-gallery-image="assets/Fotos_Tomas/tomas4.png"><img src="assets/Fotos_Tomas/tomas4.png" alt="Trabalho Tomas"></button>
-                <button data-gallery-image="assets/Fotos_Tomas/tomas5.png"><img src="assets/Fotos_Tomas/tomas5.png" alt="Trabalho Tomas"></button>
-                <button data-gallery-image="assets/Fotos_Tomas/tomas6.png"><img src="assets/Fotos_Tomas/tomas6.png" alt="Trabalho Tomas"></button>
+                <button data-gallery-group="tomas" data-gallery-image="assets/Fotos_Tomas/tomas3.png"><img src="assets/Fotos_Tomas/tomas3.png" alt="Trabalho Tomas"></button>
+                <button data-gallery-group="tomas" data-gallery-image="assets/Fotos_Tomas/tomas4.png"><img src="assets/Fotos_Tomas/tomas4.png" alt="Trabalho Tomas"></button>
+                <button data-gallery-group="tomas" data-gallery-image="assets/Fotos_Tomas/tomas5.png"><img src="assets/Fotos_Tomas/tomas5.png" alt="Trabalho Tomas"></button>
+                <button data-gallery-group="tomas" data-gallery-image="assets/Fotos_Tomas/tomas6.png"><img src="assets/Fotos_Tomas/tomas6.png" alt="Trabalho Tomas"></button>
               </div>
             </div>
           </article>
 
           <article class="barber-card">
-            <button class="barber-main" data-gallery-image="assets/Fotos_Abreu/abreuPrincipal.jpg">
+            <button class="barber-main" data-gallery-group="abreu" data-gallery-image="assets/Fotos_Abreu/abreuPrincipal.jpg">
               <img src="assets/Fotos_Abreu/abreuPrincipal.jpg" alt="Abreu">
             </button>
             <div class="barber-card-body">
@@ -110,10 +117,10 @@
                 <a class="barber-phone" href="tel:+351913388301">+351 913 388 301</a>
               </div>
               <div class="gallery-grid barber-work">
-                <button data-gallery-image="assets/Fotos_Abreu/abreu1.png"><img src="assets/Fotos_Abreu/abreu1.png" alt="Trabalho Abreu"></button>
-                <button data-gallery-image="assets/Fotos_Abreu/abreu2.png"><img src="assets/Fotos_Abreu/abreu2.png" alt="Trabalho Abreu"></button>
-                <button data-gallery-image="assets/Fotos_Abreu/abreu3.png"><img src="assets/Fotos_Abreu/abreu3.png" alt="Trabalho Abreu"></button>
-                <button data-gallery-image="assets/Fotos_Abreu/abreu4.png"><img src="assets/Fotos_Abreu/abreu4.png" alt="Trabalho Abreu"></button>
+                <button data-gallery-group="abreu" data-gallery-image="assets/Fotos_Abreu/abreu1.png"><img src="assets/Fotos_Abreu/abreu1.png" alt="Trabalho Abreu"></button>
+                <button data-gallery-group="abreu" data-gallery-image="assets/Fotos_Abreu/abreu2.png"><img src="assets/Fotos_Abreu/abreu2.png" alt="Trabalho Abreu"></button>
+                <button data-gallery-group="abreu" data-gallery-image="assets/Fotos_Abreu/abreu3.png"><img src="assets/Fotos_Abreu/abreu3.png" alt="Trabalho Abreu"></button>
+                <button data-gallery-group="abreu" data-gallery-image="assets/Fotos_Abreu/abreu4.png"><img src="assets/Fotos_Abreu/abreu4.png" alt="Trabalho Abreu"></button>
               </div>
             </div>
           </article>
@@ -124,11 +131,13 @@
 
   <div class="lightbox" data-lightbox>
     <button data-lightbox-close>Fechar</button>
+    <button class="lightbox-nav lightbox-prev" data-lightbox-prev aria-label="Foto anterior"></button>
     <img data-lightbox-image src="" alt="Foto ampliada">
+    <button class="lightbox-nav lightbox-next" data-lightbox-next aria-label="Foto seguinte"></button>
   </div>
 
   <footer class="footer">
-    Elegance Studio © 2026 · Pinhal Novo · <a href="politica-privacidade.html">Política de Privacidade</a>
+    Elegance Studio © <span data-current-year>2026</span> · Pinhal Novo · <a href="politica-privacidade.html">Política de Privacidade</a>
   </footer>
 
   <script src="script.js"></script>
