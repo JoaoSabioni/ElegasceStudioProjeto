@@ -32,6 +32,15 @@ a {
   text-decoration: none;
 }
 
+a,
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  touch-action: manipulation;
+}
+
 img {
   display: block;
   max-width: 100%;
@@ -434,6 +443,7 @@ h3 {
   background: transparent;
   cursor: pointer;
   overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .gallery-grid img {
@@ -472,6 +482,7 @@ h3 {
   background: transparent;
   cursor: pointer;
   overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .barber-main img {
@@ -897,9 +908,12 @@ h3 {
   }
 
   .gallery-grid img,
-  .barber-main img,
-  .work-card {
+  .barber-main img {
     filter: grayscale(0);
+  }
+
+  .work-card {
+    filter: grayscale(1);
   }
 
   .gallery-grid button:hover img,
