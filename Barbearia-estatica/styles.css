@@ -680,11 +680,16 @@ h3 {
   text-transform: uppercase;
 }
 
+.lightbox [data-lightbox-close] {
+  z-index: 4;
+  min-width: 96px;
+  min-height: 42px;
+}
+
 .lightbox .lightbox-nav {
-  top: 0;
+  top: 92px;
   bottom: 0;
   width: 50%;
-  height: 100%;
   border: 0;
   background: transparent;
   padding: 0;
@@ -979,10 +984,9 @@ h3 {
   }
 
   .lightbox .lightbox-nav {
-    top: 0;
+    top: 72px;
     bottom: 0;
     width: 50%;
-    height: 100%;
     padding: 0;
   }
 
