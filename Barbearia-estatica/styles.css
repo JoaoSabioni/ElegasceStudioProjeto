@@ -228,7 +228,7 @@ img {
   inset: 0 0 0 auto;
   width: 48%;
   background: linear-gradient(90deg, #050505 0%, rgba(5, 5, 5, 0.38) 42%, rgba(5, 5, 5, 0.12) 100%),
-    url("assets/Fotos_loja/loja1.png") center / cover no-repeat;
+    url("assets/optimized/Fotos_loja/loja1.jpg") center / cover no-repeat;
   filter: grayscale(1);
 }
 
@@ -605,6 +605,22 @@ h3 {
   background: rgba(255, 255, 255, 0.035);
 }
 
+.directions-link {
+  border: 1px solid transparent;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.directions-link:hover,
+.directions-link:focus-visible {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.07);
+  outline: 0;
+}
+
+.mobile-quick-actions {
+  display: none;
+}
+
 .footer {
   padding: 50px 24px;
   text-align: center;
@@ -761,6 +777,10 @@ h3 {
 }
 
 @media (max-width: 760px) {
+  body {
+    padding-bottom: 82px;
+  }
+
   .nav-inner {
     padding: 6px 16px;
   }
@@ -804,11 +824,11 @@ h3 {
   }
 
   h1 {
-    font-size: clamp(52px, 18vw, 82px);
+    font-size: 38px;
   }
 
   h2 {
-    font-size: clamp(34px, 13vw, 58px);
+    font-size: 28px;
   }
 
   h3 {
@@ -979,6 +999,69 @@ h3 {
 
   .lightbox-next::after {
     right: 12px;
+  }
+
+  .mobile-quick-actions {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    z-index: 80;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(5, 5, 5, 0.96);
+    box-shadow: 0 16px 44px rgba(0, 0, 0, 0.52);
+  }
+
+  .mobile-quick-actions a {
+    min-height: 52px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-align: center;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .mobile-quick-actions a:nth-child(2) {
+    background: white;
+    color: black;
+  }
+
+  .mobile-quick-actions a:last-child {
+    border-right: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .track,
+  .opening-loader::before,
+  .opening-loader::after,
+  .opening-loader img,
+  .ribbon-left,
+  .ribbon-right,
+  .opening-scissors {
+    animation: none;
+  }
+
+  .page-loader {
+    display: none;
+  }
+
+  body.loading {
+    overflow: auto;
   }
 }
 

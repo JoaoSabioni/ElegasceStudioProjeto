@@ -8,13 +8,32 @@ document.querySelectorAll("[data-current-year]").forEach((element) => {
 });
 
 if (pageLoader) {
-  document.body.classList.add("loading");
-  window.addEventListener("load", () => {
-    window.setTimeout(() => {
-      pageLoader.classList.add("hide");
-      document.body.classList.remove("loading");
-    }, 1700);
-  });
+  const loaderSeenKey = "elegance-gallery-loader-seen";
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let shouldShowLoader = !reduceMotion;
+
+  try {
+    shouldShowLoader = shouldShowLoader && sessionStorage.getItem(loaderSeenKey) !== "true";
+  } catch (error) {
+    // Continue with the first-visit loader when sessionStorage is unavailable.
+  }
+
+  if (!shouldShowLoader) {
+    pageLoader.classList.add("hide");
+  } else {
+    document.body.classList.add("loading");
+    window.addEventListener("load", () => {
+      window.setTimeout(() => {
+        pageLoader.classList.add("hide");
+        document.body.classList.remove("loading");
+        try {
+          sessionStorage.setItem(loaderSeenKey, "true");
+        } catch (error) {
+          // Some privacy modes block sessionStorage; the loader can still close normally.
+        }
+      }, 1700);
+    });
+  }
 }
 
 if (menuButton && mobileMenu) {
