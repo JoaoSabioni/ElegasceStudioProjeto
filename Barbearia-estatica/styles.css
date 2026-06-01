@@ -617,10 +617,6 @@ h3 {
   outline: 0;
 }
 
-.mobile-quick-actions {
-  display: none;
-}
-
 .footer {
   padding: 50px 24px;
   text-align: center;
@@ -782,10 +778,6 @@ h3 {
 }
 
 @media (max-width: 760px) {
-  body {
-    padding-bottom: 82px;
-  }
-
   .nav-inner {
     padding: 6px 16px;
   }
@@ -1005,44 +997,6 @@ h3 {
     right: 12px;
   }
 
-  .mobile-quick-actions {
-    position: fixed;
-    left: 12px;
-    right: 12px;
-    bottom: max(12px, env(safe-area-inset-bottom));
-    z-index: 80;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    background: rgba(5, 5, 5, 0.96);
-    box-shadow: 0 16px 44px rgba(0, 0, 0, 0.52);
-  }
-
-  .mobile-quick-actions a {
-    min-height: 52px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 8px;
-    border-right: 1px solid rgba(255, 255, 255, 0.1);
-    color: white;
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 0.14em;
-    text-align: center;
-    text-transform: uppercase;
-    white-space: nowrap;
-  }
-
-  .mobile-quick-actions a:nth-child(2) {
-    background: white;
-    color: black;
-  }
-
-  .mobile-quick-actions a:last-child {
-    border-right: 0;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
