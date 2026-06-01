@@ -434,7 +434,12 @@ h3 {
 
 .studio-gallery {
   margin-top: 34px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+.studio-gallery button:first-child {
+  grid-row: span 2;
 }
 
 .gallery-grid button {
@@ -459,7 +464,12 @@ h3 {
 }
 
 .studio-gallery img {
+  height: 100%;
   aspect-ratio: 4 / 3;
+}
+
+.studio-gallery button:first-child img {
+  aspect-ratio: 4 / 5;
 }
 
 .barber-grid {
@@ -924,6 +934,21 @@ h3 {
 
   .studio-gallery {
     margin-top: 26px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto auto;
+  }
+
+  .studio-gallery button:first-child {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+
+  .studio-gallery button:first-child img {
+    aspect-ratio: 16 / 10;
+  }
+
+  .studio-gallery img {
+    aspect-ratio: 1 / 1;
   }
 
   .barber-grid {
