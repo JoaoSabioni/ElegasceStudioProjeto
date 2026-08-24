@@ -38,7 +38,8 @@ if (pageLoader) {
 
 if (menuButton && mobileMenu) {
   menuButton.addEventListener("click", () => {
-    mobileMenu.classList.toggle("open");
+    const isOpen = mobileMenu.classList.toggle("open");
+    menuButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
   });
 }
 

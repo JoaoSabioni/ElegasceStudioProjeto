@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://elegasce-studio-projeto-ye3f.vercel.app/sitemap.xml
